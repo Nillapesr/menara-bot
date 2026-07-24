@@ -1,19 +1,25 @@
-@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap');
 
 :root {
-  --bg: #0b0f0e;
-  --panel: #121815;
-  --panel-raised: #171f1b;
-  --border: #232b27;
-  --text: #e8ece9;
-  --text-dim: #8a938d;
-  --text-faint: #545c57;
-  --signal: #5cf2a0;
-  --signal-dim: #2d5c42;
-  --danger: #ff6b4a;
-  --danger-dim: #5c3626;
+  --bg: #0a0a0f;
+  --panel: #131318;
+  --panel-raised: #1b1b22;
+  --border: #24242c50;
+  --border-solid: #26262f;
+  --text: #f2f2f5;
+  --text-dim: #8d8d99;
+  --text-faint: #55555f;
+  --signal: #7c3aed;
+  --signal-2: #a78bfa;
+  --signal-dim: #241a3d;
+  --signal-grad: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+  --ok: #22c55e;
+  --ok-dim: #10291a;
+  --danger: #ef4444;
+  --danger-dim: #2e1517;
   --mono: 'JetBrains Mono', ui-monospace, monospace;
   --sans: 'Inter', -apple-system, sans-serif;
+  --display: 'Space Grotesk', var(--sans);
 }
 
 * {
@@ -32,8 +38,9 @@ body {
 
 body {
   background-image:
-    radial-gradient(circle at 15% 0%, rgba(92, 242, 160, 0.05), transparent 40%),
-    radial-gradient(circle at 85% 100%, rgba(92, 242, 160, 0.03), transparent 40%);
+    radial-gradient(ellipse 900px 500px at 20% -10%, rgba(124, 58, 237, 0.16), transparent 60%),
+    radial-gradient(ellipse 700px 500px at 100% 10%, rgba(139, 92, 246, 0.08), transparent 55%),
+    linear-gradient(180deg, #0a0a0f 0%, #0c0c13 100%);
   background-attachment: fixed;
 }
 
