@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 const TEMPLATE_BASIC = `// Fungsi handle(ctx) dipanggil setiap ada pesan/klik tombol masuk ke command ini.
 // ctx.text -> teks pesan dari user
@@ -104,7 +104,6 @@ async function handle(ctx) {
 const TABS = [
   { id: 'intro', label: 'Intro', icon: '▦' },
   { id: 'commands', label: 'Commands', icon: '</>' },
-  { id: 'settings', label: 'Settings', icon: '⚙' },
 ];
 
 function initials(name) {
@@ -144,6 +143,15 @@ export default function BotCard({ bot, onChange }) {
 
   const isActive = bot.status === 'active';
   const maskedToken = bot.token ? bot.token.replace(/./g, '•').slice(0, 34) : '';
+
+  useEffect(() => {
+    if (!editingId) return;
+    function onKeyDown(e) {
+      if (e.key === 'Escape') closeEditor();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [editingId]);
 
   function openEditor(cmd) {
     setEditingId(cmd.id);
@@ -351,17 +359,31 @@ export default function BotCard({ bot, onChange }) {
 
   return (
     <div className="row">
-      <button className="row-head" onClick={() => setOpen((o) => !o)}>
-        <span className="avatar">{initials(bot.firstName || bot.username)}</span>
-        <span className="row-info">
-          <span className="row-name">{bot.firstName || bot.username}</span>
-          <span className="row-username">@{bot.username}</span>
-        </span>
-        <span className={`status-pill ${isActive ? 'ok' : 'off'}`}>
-          {isActive ? 'Working' : 'Stopped'}
-        </span>
-        <span className="manage-btn">{open ? 'Close' : 'Manage'}</span>
-      </button>
+      <div className="row-head">
+        <button className="row-head-main" onClick={() => setOpen((o) => !o)}>
+          <span className="avatar">{initials(bot.firstName || bot.username)}</span>
+          <span className="row-info">
+            <span className="row-name">{bot.firstName || bot.username}</span>
+            <span className="row-username">@{bot.username}</span>
+          </span>
+          <span className={`status-pill ${isActive ? 'ok' : 'off'}`}>
+            {isActive ? 'Working' : 'Stopped'}
+          </span>
+        </button>
+        <button
+          className={`gear-btn ${tab === 'settings' && open ? 'active' : ''}`}
+          onClick={() => {
+            setTab('settings');
+            setOpen(true);
+          }}
+          aria-label="Pengaturan bot"
+        >
+          ⚙
+        </button>
+        <button className="manage-btn" onClick={() => setOpen((o) => !o)}>
+          {open ? 'Close' : 'Manage'}
+        </button>
+      </div>
 
       {open && (
         <div className="panel">
@@ -375,6 +397,13 @@ export default function BotCard({ bot, onChange }) {
                 <span className="tab-icon">{t.icon}</span> {t.label}
               </button>
             ))}
+            <button
+              className={`tab tab-settings ${tab === 'settings' ? 'active' : ''}`}
+              onClick={() => setTab('settings')}
+              aria-label="Settings"
+            >
+              <span className="tab-icon">⚙</span>
+            </button>
           </div>
 
           {tab === 'intro' && (
@@ -515,16 +544,9 @@ export default function BotCard({ bot, onChange }) {
                     <div className="command-row">
                       <button
                         className="btn-edit-code"
-                        onClick={() => (editingId === cmd.id ? closeEditor() : openEditor(cmd))}
+                        onClick={() => openEditor(cmd)}
                       >
-                        {'</> '}Edit JS
-                      </button>
-                      <button
-                        className="btn-icon"
-                        onClick={() => (editingId === cmd.id ? closeEditor() : openEditor(cmd))}
-                        aria-label="Edit"
-                      >
-                        ✎
+                        <span className="btn-edit-code-icon">{'</>'}</span> Edit JS
                       </button>
                       <button
                         className="btn-icon btn-icon-danger"
@@ -534,49 +556,70 @@ export default function BotCard({ bot, onChange }) {
                         🗑
                       </button>
                     </div>
-
-                    {editingId === cmd.id && (
-                      <div className="command-editor">
-                        <textarea
-                          className="code-editor"
-                          value={draftCode}
-                          onChange={(e) => {
-                            setDraftCode(e.target.value);
-                            setDraftSaved(false);
-                          }}
-                          rows={12}
-                          spellCheck={false}
-                          placeholder="async function handle(ctx) {&#10;  await ctx.sendMessage('Halo!');&#10;}"
-                        />
-
-                        <p className="code-hint">
-                          Wajib mendefinisikan <code>async function handle(ctx)</code>. Tersedia:{' '}
-                          <code>ctx.text</code>, <code>ctx.callbackData</code>, <code>ctx.sendMessage()</code>,{' '}
-                          <code>ctx.sendPhoto()</code>, <code>ctx.answerCallback()</code>,{' '}
-                          <code>ctx.callAI()</code>, <code>ctx.fetchJSON()</code>. Untuk grup:{' '}
-                          <code>ctx.chatType</code>, <code>ctx.newChatMembers</code>,{' '}
-                          <code>ctx.isGroupAdmin()</code>, <code>ctx.muteUser()</code>,{' '}
-                          <code>ctx.unmuteUser()</code>, <code>ctx.kickUser()</code>,{' '}
-                          <code>ctx.banUser()</code>, <code>ctx.unbanUser()</code>,{' '}
-                          <code>ctx.pinMessage()</code>, <code>ctx.unpinMessage()</code>. Trigger event khusus:{' '}
-                          <code>@join</code> (anggota baru), <code>@leave</code> (anggota keluar).
-                        </p>
-
-                        {draftError && <p className="code-error">{draftError}</p>}
-                        {draftSaved && <p className="code-ok">Kode tersimpan dan aktif.</p>}
-
-                        <button
-                          onClick={() => saveCommandCode(cmd.id)}
-                          disabled={draftSaving}
-                          className="btn-save"
-                        >
-                          {draftSaving ? 'Menyimpan…' : 'Simpan & aktifkan kode'}
-                        </button>
-                      </div>
-                    )}
                   </div>
                 ))}
               </div>
+
+              {editingId && (
+                <div className="editor-overlay" onClick={closeEditor}>
+                  <div className="editor-modal" onClick={(e) => e.stopPropagation()}>
+                    <div className="editor-modal-head">
+                      <div className="editor-modal-title">
+                        <span className="editor-modal-icon">{'</>'}</span>
+                        <div>
+                          <p className="editor-modal-trigger">
+                            {commands.find((c) => c.id === editingId)?.trigger}
+                          </p>
+                          <p className="editor-modal-sub">Kode JavaScript command</p>
+                        </div>
+                      </div>
+                      <button className="editor-close" onClick={closeEditor} aria-label="Tutup editor">✕</button>
+                    </div>
+
+                    <div className="editor-modal-body">
+                      <textarea
+                        className="code-editor"
+                        value={draftCode}
+                        onChange={(e) => {
+                          setDraftCode(e.target.value);
+                          setDraftSaved(false);
+                        }}
+                        rows={16}
+                        spellCheck={false}
+                        placeholder="async function handle(ctx) {&#10;  await ctx.sendMessage('Halo!');&#10;}"
+                        autoFocus
+                      />
+
+                      <p className="code-hint">
+                        Wajib mendefinisikan <code>async function handle(ctx)</code>. Tersedia:{' '}
+                        <code>ctx.text</code>, <code>ctx.callbackData</code>, <code>ctx.sendMessage()</code>,{' '}
+                        <code>ctx.sendPhoto()</code>, <code>ctx.answerCallback()</code>,{' '}
+                        <code>ctx.callAI()</code>, <code>ctx.fetchJSON()</code>. Untuk grup:{' '}
+                        <code>ctx.chatType</code>, <code>ctx.newChatMembers</code>,{' '}
+                        <code>ctx.isGroupAdmin()</code>, <code>ctx.muteUser()</code>,{' '}
+                        <code>ctx.unmuteUser()</code>, <code>ctx.kickUser()</code>,{' '}
+                        <code>ctx.banUser()</code>, <code>ctx.unbanUser()</code>,{' '}
+                        <code>ctx.pinMessage()</code>, <code>ctx.unpinMessage()</code>. Trigger event khusus:{' '}
+                        <code>@join</code> (anggota baru), <code>@leave</code> (anggota keluar).
+                      </p>
+
+                      {draftError && <p className="code-error">{draftError}</p>}
+                      {draftSaved && <p className="code-ok">Kode tersimpan dan aktif.</p>}
+                    </div>
+
+                    <div className="editor-modal-foot">
+                      <button className="btn-cancel" onClick={closeEditor}>Batal</button>
+                      <button
+                        onClick={() => saveCommandCode(editingId)}
+                        disabled={draftSaving}
+                        className="btn-save"
+                      >
+                        {draftSaving ? 'Menyimpan…' : 'Simpan & Aktifkan'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               <div className="editor-field" style={{ marginTop: 16 }}>
                 <label>Balasan default (jika tak ada command yang cocok)</label>
@@ -635,33 +678,42 @@ export default function BotCard({ bot, onChange }) {
 
       <style jsx>{`
         .row {
-          background: var(--panel);
-          border: 1px solid var(--border-solid);
-          border-radius: 16px;
-          overflow: hidden;
-          box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset, 0 20px 40px -28px rgba(0,0,0,0.6);
+          background: var(--bru-white);
+          border: var(--bru-border);
+          box-shadow: var(--bru-shadow-sm);
+          margin-bottom: 4px;
         }
 
         .row-head {
           width: 100%;
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
           padding: 16px 18px;
+        }
+
+        .row-head-main {
+          flex: 1;
+          min-width: 0;
+          display: flex;
+          align-items: center;
+          gap: 12px;
           background: none;
           border: none;
           cursor: pointer;
           text-align: left;
+          padding: 0;
         }
 
         .avatar {
-          width: 40px;
-          height: 40px;
-          border-radius: 50%;
-          background: var(--signal-grad);
-          color: #fff;
+          width: 42px;
+          height: 42px;
+          border-radius: 0;
+          background: var(--bru-yellow);
+          color: var(--bru-ink);
+          border: var(--bru-border);
           font-family: var(--display);
-          font-weight: 700;
+          font-weight: 800;
           font-size: 14px;
           display: flex;
           align-items: center;
@@ -670,9 +722,9 @@ export default function BotCard({ bot, onChange }) {
         }
 
         .avatar-lg {
-          width: 52px;
-          height: 52px;
-          font-size: 17px;
+          width: 54px;
+          height: 54px;
+          font-size: 18px;
         }
 
         .row-info {
@@ -684,9 +736,9 @@ export default function BotCard({ bot, onChange }) {
 
         .row-name {
           font-family: var(--display);
-          font-weight: 700;
+          font-weight: 800;
           font-size: 14px;
-          color: var(--text);
+          color: var(--bru-ink);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
@@ -694,18 +746,19 @@ export default function BotCard({ bot, onChange }) {
 
         .row-username {
           font-size: 12px;
-          color: var(--signal-2);
+          color: #555;
           font-family: var(--mono);
+          font-weight: 600;
         }
 
         .status-pill {
           font-size: 10px;
           font-family: var(--mono);
-          font-weight: 600;
+          font-weight: 800;
           text-transform: uppercase;
           letter-spacing: 0.05em;
-          padding: 4px 10px;
-          border-radius: 100px;
+          padding: 5px 10px;
+          border: 2px solid var(--bru-ink);
           flex-shrink: 0;
           display: inline-flex;
           align-items: center;
@@ -721,50 +774,79 @@ export default function BotCard({ bot, onChange }) {
         }
 
         .status-pill.ok {
-          background: var(--ok-dim);
-          color: var(--ok);
+          background: var(--bru-green);
+          color: var(--bru-ink);
         }
 
         .status-pill.off {
-          background: var(--panel-raised);
-          color: var(--text-faint);
+          background: var(--bru-bg);
+          color: #666;
         }
 
         .manage-btn {
-          background: var(--signal-grad);
-          color: #fff;
+          background: var(--bru-ink);
+          color: var(--bru-bg);
           font-size: 12px;
-          font-weight: 600;
+          font-weight: 800;
           padding: 8px 16px;
-          border-radius: 100px;
+          border: var(--bru-border);
           flex-shrink: 0;
+          cursor: pointer;
+        }
+
+        .gear-btn {
+          flex-shrink: 0;
+          width: 36px;
+          height: 36px;
+          border: var(--bru-border);
+          background: var(--bru-white);
+          color: var(--bru-ink);
+          font-size: 16px;
+          cursor: pointer;
+          transition: transform 0.15s ease, background 0.15s ease;
+        }
+
+        .gear-btn:hover {
+          background: var(--bru-yellow);
+          transform: rotate(35deg);
+        }
+
+        .gear-btn.active {
+          background: var(--bru-yellow);
+          box-shadow: var(--bru-shadow-sm);
+        }
+
+        .tab-settings {
+          margin-left: auto;
+          flex: 0 0 auto;
+          padding: 10px 14px;
         }
 
         .panel {
-          border-top: 1px solid var(--border-solid);
-          padding: 16px 18px 20px;
+          border-top: var(--bru-border);
+          padding: 18px;
         }
 
         .tabbar {
           display: flex;
-          gap: 6px;
+          gap: 8px;
           overflow-x: auto;
-          background: var(--bg);
-          padding: 4px;
-          border-radius: 100px;
-          border: 1px solid var(--border-solid);
-          margin-bottom: 16px;
+          background: var(--bru-bg);
+          padding: 6px;
+          border: var(--bru-border);
+          margin-bottom: 18px;
         }
 
         .tab {
           flex-shrink: 0;
           background: transparent;
           border: none;
-          color: var(--text-faint);
-          padding: 8px 14px;
-          border-radius: 100px;
+          color: #555;
+          padding: 9px 16px;
           font-size: 12px;
-          font-weight: 600;
+          font-weight: 800;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
           cursor: pointer;
           white-space: nowrap;
           transition: background 0.15s ease, color 0.15s ease;
@@ -776,46 +858,47 @@ export default function BotCard({ bot, onChange }) {
         }
 
         .tab.active {
-          color: #fff;
-          background: var(--signal-grad);
+          color: var(--bru-ink);
+          background: var(--bru-yellow);
+          box-shadow: var(--bru-shadow-sm);
         }
 
         .tab-body {
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 14px;
         }
 
         .intro-card {
-          background: var(--bg);
-          border: 1px solid var(--border-solid);
-          border-radius: 14px;
-          padding: 18px;
+          background: var(--bru-bg);
+          border: var(--bru-border);
+          padding: 20px;
         }
 
         .intro-top {
           display: flex;
           align-items: center;
-          gap: 12px;
-          margin-bottom: 10px;
+          gap: 14px;
+          margin-bottom: 12px;
         }
 
         .intro-name {
           font-family: var(--display);
-          font-weight: 700;
-          font-size: 16px;
-          margin: 0 0 6px;
+          font-weight: 800;
+          font-size: 17px;
+          margin: 0 0 8px;
         }
 
         .intro-username {
-          color: var(--signal-2);
+          color: #555;
           font-family: var(--mono);
+          font-weight: 700;
           font-size: 13px;
           margin: 0;
         }
 
         .intro-id {
-          color: var(--text-faint);
+          color: #888;
           font-family: var(--mono);
           font-size: 12px;
           margin: 2px 0 16px;
@@ -823,49 +906,53 @@ export default function BotCard({ bot, onChange }) {
 
         .stop-btn {
           width: 100%;
-          border: none;
+          border: var(--bru-border);
           padding: 13px;
-          border-radius: 10px;
-          font-weight: 600;
+          font-weight: 800;
           font-size: 13px;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
           cursor: pointer;
           display: flex;
           align-items: center;
           justify-content: center;
           gap: 8px;
-          transition: filter 0.15s ease, transform 0.1s ease;
+          box-shadow: var(--bru-shadow-sm);
+          transition: transform 0.12s ease, box-shadow 0.12s ease;
         }
 
         .stop-btn.danger {
-          background: var(--danger);
-          color: #fff;
+          background: var(--bru-pink);
+          color: var(--bru-white);
         }
 
         .stop-btn.ok {
-          background: var(--ok);
-          color: #06210f;
+          background: var(--bru-green);
+          color: var(--bru-ink);
         }
 
         .stop-btn:hover:not(:disabled) {
-          filter: brightness(1.08);
+          transform: translate(-2px, -2px);
+          box-shadow: 6px 6px 0 var(--bru-ink);
         }
 
         .stop-btn:active:not(:disabled) {
-          transform: scale(0.98);
+          transform: translate(0, 0);
+          box-shadow: 2px 2px 0 var(--bru-ink);
         }
 
         .stop-dot {
           width: 8px;
           height: 8px;
-          border-radius: 2px;
           background: currentColor;
         }
 
         .section-label {
-          font-size: 11px;
+          font-size: 12px;
+          font-weight: 800;
           text-transform: uppercase;
           letter-spacing: 0.06em;
-          color: var(--text-faint);
+          color: var(--bru-ink);
           margin: 6px 0 0;
         }
 
@@ -876,9 +963,8 @@ export default function BotCard({ bot, onChange }) {
         }
 
         .stat-card {
-          background: var(--bg);
-          border: 1px solid var(--border-solid);
-          border-radius: 12px;
+          background: var(--bru-bg);
+          border: var(--bru-border);
           padding: 14px;
         }
 
@@ -887,27 +973,26 @@ export default function BotCard({ bot, onChange }) {
         }
 
         .stat-icon {
-          font-size: 14px;
-          opacity: 0.8;
+          font-size: 15px;
         }
 
         .stat-label {
           font-size: 11px;
-          color: var(--text-faint);
+          font-weight: 700;
+          color: #666;
           margin: 8px 0 2px;
         }
 
         .stat-value {
           font-family: var(--display);
-          font-size: 20px;
-          font-weight: 700;
+          font-size: 22px;
+          font-weight: 800;
           margin: 0;
         }
 
         .status-block {
-          background: var(--bg);
-          border: 1px solid var(--border-solid);
-          border-radius: 12px;
+          background: var(--bru-bg);
+          border: var(--bru-border);
           padding: 14px;
           display: flex;
           align-items: center;
@@ -916,7 +1001,8 @@ export default function BotCard({ bot, onChange }) {
 
         .status-text {
           font-size: 12px;
-          color: var(--text-dim);
+          font-weight: 600;
+          color: #444;
         }
 
         .template-row {
@@ -928,16 +1014,25 @@ export default function BotCard({ bot, onChange }) {
         }
 
         .template-label {
-          color: var(--text-faint);
+          color: #666;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.04em;
         }
 
         .btn-add {
-          background: none;
-          border: none;
-          color: var(--signal-2);
+          background: var(--bru-white);
+          border: 2px solid var(--bru-ink);
+          color: var(--bru-ink);
           font-size: 12px;
+          font-weight: 700;
           cursor: pointer;
-          padding: 0;
+          padding: 6px 10px;
+          transition: background 0.12s ease;
+        }
+
+        .btn-add:hover {
+          background: var(--bru-yellow);
         }
 
         .io-row {
@@ -951,22 +1046,19 @@ export default function BotCard({ bot, onChange }) {
           display: inline-flex;
           align-items: center;
           gap: 6px;
-          background: var(--panel-raised);
-          border: 1px solid var(--border-solid);
-          color: var(--text);
+          background: var(--bru-white);
+          border: 2px solid var(--bru-ink);
+          color: var(--bru-ink);
           padding: 8px 14px;
-          border-radius: 100px;
           font-size: 12px;
-          font-weight: 600;
+          font-weight: 800;
           cursor: pointer;
-          transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+          transition: background 0.15s ease, transform 0.1s ease;
         }
 
         .io-btn:hover:not(:disabled) {
-          border-color: rgba(124,58,237,0.5);
-          background: var(--signal-dim);
-          color: var(--signal-2);
-          transform: translateY(-1px);
+          background: var(--bru-blue);
+          color: var(--bru-white);
         }
 
         .io-btn:disabled {
@@ -981,27 +1073,27 @@ export default function BotCard({ bot, onChange }) {
         .io-count {
           margin-left: auto;
           font-size: 11px;
-          color: var(--text-faint);
+          font-weight: 700;
+          color: #777;
         }
 
         .cmd-toolbar {
           display: flex;
           flex-direction: column;
-          gap: 8px;
+          gap: 10px;
         }
 
         .search-box {
           display: flex;
           align-items: center;
           gap: 8px;
-          background: var(--bg);
-          border: 1px solid var(--border-solid);
-          border-radius: 10px;
+          background: var(--bru-bg);
+          border: var(--bru-border);
           padding: 0 12px;
         }
 
         .search-icon {
-          color: var(--text-faint);
+          color: #777;
           font-size: 13px;
         }
 
@@ -1009,10 +1101,7 @@ export default function BotCard({ bot, onChange }) {
           border: none;
           background: none;
           padding: 10px 0;
-        }
-
-        .search-box input:focus {
-          box-shadow: none;
+          box-shadow: none !important;
         }
 
         .add-command-row {
@@ -1025,89 +1114,66 @@ export default function BotCard({ bot, onChange }) {
         }
 
         .new-cmd-btn {
-          background: var(--signal-grad);
-          color: #fff;
-          border: none;
-          padding: 0 18px;
-          border-radius: 10px;
-          font-weight: 600;
+          background: var(--bru-ink);
+          color: var(--bru-bg);
+          border: var(--bru-border);
+          padding: 0 20px;
+          font-weight: 800;
           font-size: 12px;
           cursor: pointer;
           white-space: nowrap;
-          transition: filter 0.15s ease, transform 0.1s ease;
+          box-shadow: var(--bru-shadow-sm);
+          transition: transform 0.12s ease, box-shadow 0.12s ease;
         }
 
         .new-cmd-btn:disabled {
           opacity: 0.5;
           cursor: default;
+          box-shadow: none;
         }
 
         .new-cmd-btn:not(:disabled):hover {
-          filter: brightness(1.08);
+          transform: translate(-2px, -2px);
+          box-shadow: 5px 5px 0 var(--bru-ink);
         }
 
         .empty-rules {
           font-size: 12px;
-          color: var(--text-faint);
+          font-weight: 600;
+          color: #777;
           margin: 4px 0;
         }
 
         .command-list {
-          position: relative;
-          display: flex;
-          flex-direction: column;
-          gap: 0;
-          margin-left: 6px;
-          padding-left: 16px;
-          border-left: 1px dashed var(--border-solid);
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+          gap: 12px;
         }
 
         .command-item {
           position: relative;
-          background: var(--panel-raised);
-          border: 1px solid var(--border-solid);
-          border-radius: 10px;
-          padding: 12px;
-          margin-bottom: 10px;
-          transition: border-color 0.15s ease;
-        }
-
-        .command-item::before {
-          content: '';
-          position: absolute;
-          left: -16px;
-          top: 20px;
-          width: 14px;
-          height: 1px;
-          background: var(--border-solid);
-        }
-
-        .command-item::after {
-          content: '';
-          position: absolute;
-          left: -19px;
-          top: 16px;
-          width: 7px;
-          height: 7px;
-          border-radius: 50%;
-          background: var(--signal-2);
-          box-shadow: 0 0 0 3px rgba(139,92,246,0.15);
+          background: var(--bru-white);
+          border: var(--bru-border);
+          box-shadow: var(--bru-shadow-sm);
+          padding: 14px;
+          transition: transform 0.12s ease, box-shadow 0.12s ease;
         }
 
         .command-item:hover {
-          border-color: rgba(124,58,237,0.4);
+          transform: translate(-2px, -2px);
+          box-shadow: 6px 6px 0 var(--bru-ink);
         }
 
         .command-trigger {
           display: inline-block;
           font-family: var(--mono);
-          font-weight: 600;
+          font-weight: 800;
           font-size: 12px;
-          color: #fff;
-          background: var(--signal-grad);
-          padding: 4px 12px;
-          border-radius: 100px;
-          margin-bottom: 10px;
+          color: var(--bru-ink);
+          background: var(--bru-yellow);
+          border: 2px solid var(--bru-ink);
+          padding: 4px 10px;
+          margin-bottom: 12px;
         }
 
         .command-row {
@@ -1118,136 +1184,261 @@ export default function BotCard({ bot, onChange }) {
 
         .btn-edit-code {
           flex: 1;
-          background: var(--bg);
-          border: 1px solid var(--border-solid);
-          color: var(--signal-2);
+          background: var(--bru-ink);
+          border: 2px solid var(--bru-ink);
+          color: var(--bru-bg);
           padding: 9px 12px;
-          border-radius: 8px;
           font-size: 12px;
-          font-weight: 500;
+          font-weight: 800;
           font-family: var(--mono);
           cursor: pointer;
           text-align: left;
-          transition: border-color 0.15s ease, background 0.15s ease;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          transition: background 0.12s ease, color 0.12s ease;
+        }
+
+        .btn-edit-code-icon {
+          color: var(--bru-green);
         }
 
         .btn-edit-code:hover {
-          border-color: var(--signal);
-          background: var(--signal-dim);
+          background: var(--bru-blue);
+          border-color: var(--bru-ink);
         }
 
         .btn-icon {
-          background: var(--bg);
-          border: 1px solid var(--border-solid);
-          color: var(--text-dim);
-          width: 34px;
-          height: 34px;
+          background: var(--bru-white);
+          border: 2px solid var(--bru-ink);
+          color: var(--bru-ink);
+          width: 36px;
+          height: 36px;
           flex-shrink: 0;
-          border-radius: 8px;
           cursor: pointer;
-          font-size: 13px;
-          transition: border-color 0.15s ease, color 0.15s ease;
-        }
-
-        .btn-icon:hover {
-          color: var(--signal-2);
-          border-color: rgba(124,58,237,0.4);
+          font-size: 14px;
+          transition: background 0.15s ease, color 0.15s ease;
         }
 
         .btn-icon-danger:hover {
-          color: var(--danger);
-          border-color: var(--danger);
+          background: var(--bru-pink);
+          color: var(--bru-white);
         }
 
-        .command-editor {
-          margin-top: 10px;
-          padding-top: 10px;
-          border-top: 1px dashed var(--border-solid);
+        /* --- Editor JS: modal overlay, bukan lagi inline --- */
+        .editor-overlay {
+          position: fixed;
+          inset: 0;
+          background: rgba(10, 10, 10, 0.6);
+          backdrop-filter: blur(2px);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          padding: 24px;
+          z-index: 1000;
+        }
+
+        .editor-modal {
+          width: 100%;
+          max-width: 720px;
+          max-height: 88vh;
           display: flex;
           flex-direction: column;
+          background: var(--bru-white);
+          border: var(--bru-border);
+          box-shadow: 12px 12px 0 var(--bru-ink);
+        }
+
+        .editor-modal-head {
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 12px;
+          padding: 16px 18px;
+          border-bottom: var(--bru-border);
+          background: var(--bru-yellow);
+        }
+
+        .editor-modal-title {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          min-width: 0;
+        }
+
+        .editor-modal-icon {
+          font-family: var(--mono);
+          font-weight: 800;
+          font-size: 20px;
+          background: var(--bru-ink);
+          color: var(--bru-yellow);
+          width: 38px;
+          height: 38px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          border: 2px solid var(--bru-ink);
+        }
+
+        .editor-modal-trigger {
+          font-family: var(--mono);
+          font-weight: 800;
+          font-size: 15px;
+          margin: 0;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+
+        .editor-modal-sub {
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin: 2px 0 0;
+          color: #444;
+        }
+
+        .editor-close {
+          flex-shrink: 0;
+          width: 34px;
+          height: 34px;
+          border: 2px solid var(--bru-ink);
+          background: var(--bru-white);
+          font-weight: 800;
+          font-size: 14px;
+          cursor: pointer;
+          transition: background 0.12s ease, color 0.12s ease;
+        }
+
+        .editor-close:hover {
+          background: var(--bru-pink);
+          color: var(--bru-white);
+        }
+
+        .editor-modal-body {
+          padding: 18px;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+        }
+
+        .editor-modal-foot {
+          display: flex;
+          justify-content: flex-end;
           gap: 10px;
+          padding: 14px 18px;
+          border-top: var(--bru-border);
+          background: var(--bru-bg);
+        }
+
+        .btn-cancel {
+          background: var(--bru-white);
+          border: 2px solid var(--bru-ink);
+          color: var(--bru-ink);
+          padding: 10px 18px;
+          font-weight: 800;
+          font-size: 12px;
+          text-transform: uppercase;
+          cursor: pointer;
+          transition: background 0.12s ease;
+        }
+
+        .btn-cancel:hover {
+          background: var(--bru-bg);
         }
 
         .code-editor {
           width: 100%;
           font-family: var(--mono);
-          font-size: 12px;
-          line-height: 1.65;
-          background: #050508;
-          border: 1px solid var(--border-solid);
-          color: var(--text);
-          border-radius: 10px;
-          padding: 10px 12px;
-          min-height: 220px;
+          font-size: 12.5px;
+          line-height: 1.7;
+          background: var(--bru-ink);
+          border: var(--bru-border);
+          color: #d8ffd8;
+          padding: 14px 16px;
+          min-height: 280px;
           white-space: pre;
           outline: none;
           resize: vertical;
         }
 
         .code-editor:focus {
-          border-color: var(--signal);
-          box-shadow: 0 0 0 3px rgba(124,58,237,0.18);
+          box-shadow: 4px 4px 0 var(--bru-blue);
         }
 
         .code-hint {
           font-size: 11px;
-          color: var(--text-faint);
-          line-height: 1.6;
+          color: #555;
+          line-height: 1.7;
           margin: 0;
+          background: var(--bru-bg);
+          border: 2px solid var(--bru-ink);
+          padding: 10px 12px;
         }
 
         .code-hint code {
-          background: var(--panel-raised);
-          border: 1px solid var(--border-solid);
+          background: var(--bru-yellow);
+          border: 1px solid var(--bru-ink);
           padding: 1px 5px;
-          border-radius: 4px;
-          color: var(--signal-2);
+          font-weight: 700;
+          color: var(--bru-ink);
         }
 
         .code-error {
-          background: var(--danger-dim);
-          color: var(--danger);
+          background: var(--bru-pink);
+          color: var(--bru-white);
+          border: var(--bru-border);
           font-size: 12px;
-          padding: 8px 10px;
-          border-radius: 8px;
+          font-weight: 700;
+          padding: 10px 12px;
           margin: 0;
         }
 
         .code-ok {
-          background: var(--ok-dim);
-          color: var(--ok);
+          background: var(--bru-green);
+          color: var(--bru-ink);
+          border: var(--bru-border);
           font-size: 12px;
-          padding: 8px 10px;
-          border-radius: 8px;
+          font-weight: 700;
+          padding: 10px 12px;
           margin: 0;
         }
 
         .btn-save {
-          align-self: flex-start;
-          background: var(--signal-grad);
-          color: #fff;
-          border: none;
-          padding: 10px 20px;
-          border-radius: 8px;
-          font-weight: 600;
+          background: var(--bru-ink);
+          color: var(--bru-bg);
+          border: var(--bru-border);
+          padding: 11px 22px;
+          font-weight: 800;
           font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
           cursor: pointer;
-          transition: filter 0.15s ease, transform 0.1s ease;
+          box-shadow: var(--bru-shadow-sm);
+          transition: transform 0.12s ease, box-shadow 0.12s ease;
         }
 
         .btn-save:hover:not(:disabled) {
-          filter: brightness(1.1);
+          transform: translate(-2px, -2px);
+          box-shadow: 6px 6px 0 var(--bru-ink);
+          background: var(--bru-green);
+          color: var(--bru-ink);
         }
 
         .btn-save:disabled {
           opacity: 0.5;
           cursor: default;
+          box-shadow: none;
         }
 
         .editor-field label {
           display: block;
           font-size: 11px;
-          color: var(--text-faint);
+          font-weight: 800;
+          color: #555;
           text-transform: uppercase;
           letter-spacing: 0.04em;
           margin-bottom: 6px;
@@ -1255,11 +1446,10 @@ export default function BotCard({ bot, onChange }) {
 
         .editor-field textarea {
           width: 100%;
-          background: var(--bg);
-          border: 1px solid var(--border-solid);
-          color: var(--text);
+          background: var(--bru-bg);
+          border: var(--bru-border);
+          color: var(--bru-ink);
           padding: 10px 12px;
-          border-radius: 10px;
           font-size: 13px;
           font-family: var(--sans);
           outline: none;
@@ -1267,27 +1457,27 @@ export default function BotCard({ bot, onChange }) {
         }
 
         .editor-field textarea:focus {
-          border-color: var(--signal);
-          box-shadow: 0 0 0 3px rgba(124,58,237,0.15);
+          box-shadow: 4px 4px 0 var(--bru-blue);
         }
 
         .saving-hint {
           font-size: 11px;
-          color: var(--text-faint);
+          font-weight: 700;
+          color: #777;
         }
 
         .settings-card {
-          background: var(--bg);
-          border: 1px solid var(--border-solid);
-          border-radius: 12px;
-          padding: 14px 16px;
+          background: var(--bru-bg);
+          border: var(--bru-border);
+          padding: 16px 18px;
         }
 
         .settings-label {
-          font-size: 10px;
+          font-size: 11px;
+          font-weight: 800;
           text-transform: uppercase;
           letter-spacing: 0.06em;
-          color: var(--text-faint);
+          color: #555;
           margin: 0 0 8px;
         }
 
@@ -1300,7 +1490,8 @@ export default function BotCard({ bot, onChange }) {
 
         .settings-value {
           font-size: 13px;
-          color: var(--text);
+          font-weight: 600;
+          color: var(--bru-ink);
           word-break: break-all;
         }
 
@@ -1310,49 +1501,54 @@ export default function BotCard({ bot, onChange }) {
         }
 
         .eye-btn {
-          background: var(--panel-raised);
-          border: 1px solid var(--border-solid);
-          border-radius: 8px;
-          width: 32px;
-          height: 32px;
+          background: var(--bru-white);
+          border: 2px solid var(--bru-ink);
+          width: 34px;
+          height: 34px;
           flex-shrink: 0;
           cursor: pointer;
         }
 
         .danger-zone {
-          border-color: rgba(239,68,68,0.3);
+          border-color: var(--bru-ink);
+          background: #fff0f0;
         }
 
         .danger-label {
-          color: var(--danger);
+          color: #b3003b;
         }
 
         .danger-desc {
           font-size: 12px;
-          color: var(--text-dim);
-          line-height: 1.6;
+          font-weight: 600;
+          color: #444;
+          line-height: 1.7;
           margin: 0 0 12px;
         }
 
         .delete-btn {
-          background: var(--danger);
-          color: #fff;
-          border: none;
-          padding: 11px 18px;
-          border-radius: 10px;
-          font-weight: 600;
+          background: var(--bru-pink);
+          color: var(--bru-white);
+          border: var(--bru-border);
+          padding: 12px 18px;
+          font-weight: 800;
           font-size: 12px;
+          text-transform: uppercase;
+          letter-spacing: 0.03em;
           cursor: pointer;
           width: 100%;
-          transition: filter 0.15s ease;
+          box-shadow: var(--bru-shadow-sm);
+          transition: transform 0.12s ease, box-shadow 0.12s ease;
         }
 
         .delete-btn:hover:not(:disabled) {
-          filter: brightness(1.1);
+          transform: translate(-2px, -2px);
+          box-shadow: 6px 6px 0 var(--bru-ink);
         }
 
         .delete-btn:disabled {
           opacity: 0.5;
+          box-shadow: none;
         }
       `}</style>
     </div>

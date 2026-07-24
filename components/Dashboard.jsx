@@ -71,7 +71,7 @@ export default function Dashboard() {
         <div className="brand">
           <span className="brand-mark" aria-hidden="true" />
           <div>
-            <h1>Menara</h1>
+            <h1>Sanzu Cloud</h1>
             <p>Panel kendali bot Telegram</p>
           </div>
         </div>

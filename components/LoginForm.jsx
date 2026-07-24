@@ -40,7 +40,7 @@ export default function LoginForm() {
   return (
     <main className="auth-wrap">
       <div className="auth-card">
-        <Link href="/" className="back-link">← MENARA_</Link>
+        <Link href="/" className="back-link">← SANZU_</Link>
         <h1>MASUK</h1>
         <p className="sub">Belum punya akun? <Link href="/register">Daftar di sini</Link></p>
 

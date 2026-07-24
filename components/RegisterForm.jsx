@@ -41,7 +41,7 @@ export default function RegisterForm() {
   return (
     <main className="auth-wrap">
       <div className="auth-card">
-        <Link href="/" className="back-link">← MENARA_</Link>
+        <Link href="/" className="back-link">← SANZU_</Link>
         <h1>GET STARTED</h1>
         <p className="sub">Sudah punya akun? <Link href="/login">Masuk di sini</Link></p>
 

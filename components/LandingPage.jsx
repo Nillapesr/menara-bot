@@ -6,7 +6,7 @@ export default function LandingPage() {
   return (
     <main className="land">
       <nav className="nav">
-        <span className="logo">MENARA_</span>
+        <span className="logo">SANZU_</span>
         <div className="nav-links">
           <Link href="/login" className="nav-link">Masuk</Link>
           <Link href="/register" className="btn-nav">Get Started</Link>
@@ -68,7 +68,7 @@ export default function LandingPage() {
       </section>
 
       <footer className="foot">
-        <span>MENARA © 2026</span>
+        <span>SANZU CLOUD © 2026</span>
       </footer>
 
       <style jsx>{`
