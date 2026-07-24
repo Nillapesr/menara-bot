@@ -57,7 +57,7 @@ export default function BotCard({ bot, onChange }) {
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState(bot.mode || 'rules');
   const [commands, setCommands] = useState(bot.commands || []);
-  const [editingId, setEditingId] = useState(null); // command yang sedang dibuka editornya
+  const [editingId, setEditingId] = useState(null);
   const [draftCode, setDraftCode] = useState('');
   const [draftError, setDraftError] = useState('');
   const [draftSaving, setDraftSaving] = useState(false);
@@ -194,177 +194,174 @@ export default function BotCard({ bot, onChange }) {
   }
 
   return (
-    <div className={`card ${!isActive ? 'paused' : ''}`}>
-      <div className="pulse-bar" aria-hidden="true" />
-
-      <div className="card-body">
-        <div className="card-head">
+    <div className={`brut-card ${!isActive ? 'paused' : ''}`}>
+      <div className="brut-stripe" />
+      
+      <div className="brut-body">
+        <div className="brut-header">
           <div>
-            <p className="username">@{bot.username}</p>
-            <p className="name">{bot.firstName}</p>
+            <div className="brut-username">@{bot.username}</div>
+            <div className="brut-name">{bot.firstName}</div>
           </div>
-          <span className={`badge ${isActive ? 'live' : 'off'}`}>
-            {isActive ? 'aktif' : 'dijeda'}
-          </span>
+          <div className={`brut-badge ${isActive ? 'live' : 'dead'}`}>
+            {isActive ? '● LIVE' : '○ OFFLINE'}
+          </div>
         </div>
 
-        <div className="meta-row">
-          <span>{bot.messageCount || 0} pesan diproses</span>
+        <div className="brut-stats">
+          <span className="brut-stat">📊 {bot.messageCount || 0} msgs</span>
+          <span className="brut-stat">⚡ {bot.commands?.length || 0} cmds</span>
         </div>
 
-        <div className="actions">
-          <button onClick={toggleStatus} disabled={busy} className="btn-secondary">
-            {isActive ? 'Jeda bot' : 'Aktifkan lagi'}
+        <div className="brut-actions">
+          <button onClick={toggleStatus} disabled={busy} className="brut-btn brut-btn-toggle">
+            {isActive ? '⏸ PAUSE' : '▶ PLAY'}
           </button>
-          <button onClick={() => setExpanded((e) => !e)} className="btn-secondary">
-            {expanded ? 'Tutup pengaturan' : 'Atur balasan'}
+          <button onClick={() => setExpanded((e) => !e)} className="brut-btn brut-btn-edit">
+            {expanded ? '✕ CLOSE' : '⚙ CONFIG'}
           </button>
-          <button onClick={removeBot} disabled={busy} className="btn-danger">
-            Hapus
+          <button onClick={removeBot} disabled={busy} className="brut-btn brut-btn-danger">
+            ✕ KILL
           </button>
         </div>
 
         {expanded && (
-          <div className="editor">
-            <div className="mode-switch">
+          <div className="brut-editor">
+            <div className="brut-tabs">
               <button
-                className={`mode-btn ${mode === 'rules' ? 'active' : ''}`}
+                className={`brut-tab ${mode === 'rules' ? 'active' : ''}`}
                 onClick={() => setMode('rules')}
               >
-                Kata kunci (tanpa kode)
+                📝 RULES
               </button>
               <button
-                className={`mode-btn ${mode === 'commands' ? 'active' : ''}`}
+                className={`brut-tab ${mode === 'commands' ? 'active' : ''}`}
                 onClick={() => setMode('commands')}
               >
-                Commands (JS per-command)
+                💻 COMMANDS
               </button>
             </div>
 
             {mode === 'rules' && (
               <>
-                <div className="editor-field">
-                  <label>Pesan saat /start</label>
+                <div className="brut-field">
+                  <label>WELCOME MESSAGE</label>
                   <textarea
                     value={welcome}
                     onChange={(e) => setWelcome(e.target.value)}
                     rows={2}
+                    className="brut-input"
                   />
                 </div>
 
-                <div className="editor-field">
-                  <label>Balasan default (jika tak ada kata kunci cocok)</label>
+                <div className="brut-field">
+                  <label>FALLBACK REPLY</label>
                   <textarea
                     value={fallback}
                     onChange={(e) => setFallback(e.target.value)}
                     rows={2}
+                    className="brut-input"
                   />
                 </div>
 
-                <div className="rules-head">
-                  <label>Kata kunci &amp; balasan otomatis</label>
-                  <button onClick={addRule} className="btn-add">+ Tambah</button>
+                <div className="brut-rules-header">
+                  <label>KEYWORD RULES</label>
+                  <button onClick={addRule} className="brut-btn-add">+ ADD</button>
                 </div>
 
                 {rules.length === 0 && (
-                  <p className="empty-rules">Belum ada kata kunci. Tambahkan agar bot bisa membalas otomatis.</p>
+                  <div className="brut-empty">∅ No rules defined</div>
                 )}
 
                 {rules.map((rule, idx) => (
-                  <div className="rule-row" key={idx}>
+                  <div className="brut-rule" key={idx}>
                     <input
-                      placeholder="kata kunci"
+                      placeholder="trigger"
                       value={rule.trigger}
                       onChange={(e) => updateRule(idx, 'trigger', e.target.value)}
+                      className="brut-input"
                     />
                     <select
                       value={rule.type}
                       onChange={(e) => updateRule(idx, 'type', e.target.value)}
+                      className="brut-select"
                     >
-                      <option value="contains">mengandung</option>
-                      <option value="exact">persis sama</option>
-                      <option value="starts">diawali</option>
+                      <option value="contains">contains</option>
+                      <option value="exact">exact</option>
+                      <option value="starts">starts</option>
                     </select>
                     <input
-                      placeholder="balasan"
+                      placeholder="reply"
                       value={rule.reply}
                       onChange={(e) => updateRule(idx, 'reply', e.target.value)}
+                      className="brut-input"
                     />
-                    <button onClick={() => removeRule(idx)} className="btn-remove" aria-label="Hapus kata kunci">
-                      ×
-                    </button>
+                    <button onClick={() => removeRule(idx)} className="brut-btn-remove">✕</button>
                   </div>
                 ))}
 
-                <button onClick={saveRules} disabled={saving} className="btn-save">
-                  {saving ? 'Menyimpan…' : 'Simpan pengaturan'}
+                <button onClick={saveRules} disabled={saving} className="brut-btn-save">
+                  {saving ? 'SAVING...' : '💾 SAVE'}
                 </button>
               </>
             )}
 
             {mode === 'commands' && (
               <>
-                <div className="template-row">
-                  <span className="template-label">Mulai dari template:</span>
-                  <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_BASIC)}>
-                    Dasar (teks + gambar + tombol)
+                <div className="brut-templates">
+                  <span className="brut-label-sm">TEMPLATES:</span>
+                  <button className="brut-btn-sm" onClick={() => loadTemplate(TEMPLATE_BASIC)}>
+                    BASIC
                   </button>
-                  <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_AI)}>
-                    Terhubung AI (ChatGPT)
+                  <button className="brut-btn-sm" onClick={() => loadTemplate(TEMPLATE_AI)}>
+                    AI
                   </button>
                 </div>
 
-                <div className="add-command-row">
+                <div className="brut-add-cmd">
                   <input
-                    placeholder="/start, /play, help_menu…"
+                    placeholder="/command"
                     value={newTrigger}
                     onChange={(e) => setNewTrigger(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addCommand()}
+                    className="brut-input"
                   />
                   <button
-                    className="btn-save btn-new-cmd"
+                    className="brut-btn-save"
                     onClick={() => addCommand()}
                     disabled={addingCommand || !newTrigger.trim()}
                   >
-                    + New
+                    + NEW
                   </button>
                 </div>
 
                 {commands.length === 0 && (
-                  <p className="empty-rules">Belum ada command. Tambahkan trigger di atas untuk membuat command pertama.</p>
+                  <div className="brut-empty">∅ No commands yet</div>
                 )}
 
-                <div className="command-list">
+                <div className="brut-commands">
                   {commands.map((cmd) => (
-                    <div className="command-item" key={cmd.id}>
-                      <div className="command-trigger">{cmd.trigger}</div>
-                      <div className="command-row">
+                    <div className="brut-cmd-item" key={cmd.id}>
+                      <div className="brut-cmd-trigger">{cmd.trigger}</div>
+                      <div className="brut-cmd-actions">
                         <button
-                          className="btn-edit-code"
+                          className="brut-btn-code"
                           onClick={() => (editingId === cmd.id ? closeEditor() : openEditor(cmd))}
                         >
-                          {'</> '}Edit JS
+                          {editingId === cmd.id ? '✕ CLOSE' : '</> EDIT'}
                         </button>
                         <button
-                          className="btn-icon"
-                          onClick={() => (editingId === cmd.id ? closeEditor() : openEditor(cmd))}
-                          aria-label="Edit"
-                        >
-                          ✎
-                        </button>
-                        <button
-                          className="btn-icon btn-icon-danger"
+                          className="brut-btn-remove"
                           onClick={() => removeCommand(cmd.id)}
-                          aria-label="Hapus command"
                         >
                           🗑
                         </button>
                       </div>
 
                       {editingId === cmd.id && (
-                        <div className="command-editor">
+                        <div className="brut-code-editor">
                           <textarea
-                            className="code-editor"
+                            className="brut-code-area"
                             value={draftCode}
                             onChange={(e) => {
                               setDraftCode(e.target.value);
@@ -372,26 +369,22 @@ export default function BotCard({ bot, onChange }) {
                             }}
                             rows={12}
                             spellCheck={false}
-                            placeholder="async function handle(ctx) {&#10;  await ctx.sendMessage('Halo!');&#10;}"
+                            placeholder="async function handle(ctx) { ... }"
                           />
 
-                          <p className="code-hint">
-                            Wajib mendefinisikan <code>async function handle(ctx)</code>. Tersedia:{' '}
-                            <code>ctx.text</code>, <code>ctx.callbackData</code>, <code>ctx.sendMessage()</code>,{' '}
-                            <code>ctx.sendPhoto()</code>, <code>ctx.sendButtons()</code>,{' '}
-                            <code>ctx.answerCallback()</code>, <code>ctx.callAI()</code>, <code>ctx.fetchJSON()</code>.
-                            Tidak ada akses ke <code>require</code>/<code>process</code>/filesystem.
-                          </p>
+                          <div className="brut-code-hint">
+                            <span>📘 Available: ctx.text • ctx.sendMessage() • ctx.sendPhoto() • ctx.callAI() • ctx.fetchJSON()</span>
+                          </div>
 
-                          {draftError && <p className="code-error">{draftError}</p>}
-                          {draftSaved && <p className="code-ok">Kode tersimpan dan aktif.</p>}
+                          {draftError && <div className="brut-error">{draftError}</div>}
+                          {draftSaved && <div className="brut-success">✓ Saved & active</div>}
 
                           <button
                             onClick={() => saveCommandCode(cmd.id)}
                             disabled={draftSaving}
-                            className="btn-save"
+                            className="brut-btn-save"
                           >
-                            {draftSaving ? 'Menyimpan…' : 'Simpan & aktifkan kode'}
+                            {draftSaving ? 'SAVING...' : '💾 DEPLOY'}
                           </button>
                         </div>
                       )}
@@ -399,12 +392,13 @@ export default function BotCard({ bot, onChange }) {
                   ))}
                 </div>
 
-                <div className="editor-field" style={{ marginTop: 8 }}>
-                  <label>Balasan default (jika tak ada command yang cocok)</label>
+                <div className="brut-field">
+                  <label>DEFAULT FALLBACK</label>
                   <textarea
                     value={fallback}
                     onChange={(e) => setFallback(e.target.value)}
                     rows={2}
+                    className="brut-input"
                     onBlur={saveRules}
                   />
                 </div>
@@ -415,382 +409,483 @@ export default function BotCard({ bot, onChange }) {
       </div>
 
       <style jsx>{`
-        .card {
+        .brut-card {
+          background: #0a0b0e;
+          border: 2px solid #2a2b2e;
+          border-radius: 0;
+          box-shadow: 8px 8px 0 #1a1b1e;
+          margin-bottom: 24px;
           position: relative;
-          display: flex;
-          background: var(--panel);
-          border: 1px solid var(--border);
-          border-radius: 10px;
-          overflow: hidden;
+          transition: all 0.1s ease;
+          font-family: 'Courier New', monospace;
         }
 
-        .pulse-bar {
-          width: 4px;
-          flex-shrink: 0;
-          background: var(--signal);
-          animation: pulse 2.2s ease-in-out infinite;
+        .brut-card:hover {
+          transform: translate(-2px, -2px);
+          box-shadow: 12px 12px 0 #1a1b1e;
         }
 
-        .card.paused .pulse-bar {
-          background: var(--text-faint);
+        .brut-card.paused {
+          opacity: 0.6;
+          filter: grayscale(0.8);
+        }
+
+        .brut-stripe {
+          height: 4px;
+          background: linear-gradient(90deg, #ff0055, #ff6600, #ffcc00, #00ff66, #0066ff, #ff0055);
+          background-size: 300% 100%;
+          animation: stripemove 3s linear infinite;
+        }
+
+        @keyframes stripemove {
+          0% { background-position: 0% 0%; }
+          100% { background-position: 300% 0%; }
+        }
+
+        .brut-card.paused .brut-stripe {
+          background: #2a2b2e;
           animation: none;
         }
 
-        @keyframes pulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.35; }
+        .brut-body {
+          padding: 24px;
         }
 
-        .card-body {
-          flex: 1;
-          padding: 18px 20px;
-          min-width: 0;
-        }
-
-        .card-head {
+        .brut-header {
           display: flex;
           justify-content: space-between;
           align-items: flex-start;
-          gap: 8px;
+          border-bottom: 2px solid #2a2b2e;
+          padding-bottom: 16px;
+          margin-bottom: 16px;
         }
 
-        .username {
-          font-family: var(--mono);
+        .brut-username {
+          font-size: 18px;
           font-weight: 700;
-          font-size: 15px;
-          margin: 0;
-        }
-
-        .name {
-          margin: 2px 0 0;
-          color: var(--text-dim);
-          font-size: 12px;
-        }
-
-        .badge {
-          font-size: 10px;
-          font-family: var(--mono);
+          color: #fff;
+          letter-spacing: -0.5px;
           text-transform: uppercase;
-          letter-spacing: 0.05em;
-          padding: 3px 8px;
-          border-radius: 100px;
-          flex-shrink: 0;
         }
 
-        .badge.live {
-          background: var(--signal-dim);
-          color: var(--signal);
-        }
-
-        .badge.off {
-          background: var(--panel-raised);
-          color: var(--text-faint);
-        }
-
-        .meta-row {
-          margin-top: 10px;
+        .brut-name {
           font-size: 12px;
-          color: var(--text-faint);
-        }
-
-        .actions {
-          display: flex;
-          gap: 8px;
-          margin-top: 14px;
-          flex-wrap: wrap;
-        }
-
-        .btn-secondary, .btn-danger {
-          background: var(--panel-raised);
-          border: 1px solid var(--border);
-          color: var(--text-dim);
-          padding: 7px 12px;
-          border-radius: 6px;
-          font-size: 12px;
-          cursor: pointer;
-        }
-
-        .btn-secondary:hover {
-          color: var(--text);
-          border-color: var(--signal-dim);
-        }
-
-        .btn-danger:hover {
-          color: var(--danger);
-          border-color: var(--danger);
-        }
-
-        .editor {
-          margin-top: 18px;
-          padding-top: 16px;
-          border-top: 1px solid var(--border);
-          display: flex;
-          flex-direction: column;
-          gap: 12px;
-        }
-
-        .editor-field label,
-        .rules-head label {
-          display: block;
-          font-size: 11px;
-          color: var(--text-faint);
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-          margin-bottom: 6px;
-        }
-
-        textarea, input, select {
-          width: 100%;
-          background: var(--bg);
-          border: 1px solid var(--border);
-          color: var(--text);
-          padding: 8px 10px;
-          border-radius: 6px;
-          font-size: 13px;
-          font-family: var(--sans);
-          outline: none;
-          resize: vertical;
-        }
-
-        textarea:focus, input:focus, select:focus {
-          border-color: var(--signal);
-        }
-
-        .rules-head {
-          display: flex;
-          justify-content: space-between;
-          align-items: center;
-          margin-top: 6px;
-        }
-
-        .mode-switch {
-          display: flex;
-          gap: 6px;
-          margin-bottom: 4px;
-        }
-
-        .mode-btn {
-          flex: 1;
-          background: var(--bg);
-          border: 1px solid var(--border);
-          color: var(--text-faint);
-          padding: 8px 10px;
-          border-radius: 6px;
-          font-size: 11px;
-          cursor: pointer;
-          text-align: center;
-        }
-
-        .mode-btn.active {
-          border-color: var(--signal);
-          color: var(--signal);
-          background: var(--signal-dim);
-        }
-
-        .template-row {
-          display: flex;
-          align-items: center;
-          gap: 10px;
-          flex-wrap: wrap;
-          font-size: 11px;
-        }
-
-        .template-label {
-          color: var(--text-faint);
-        }
-
-        .code-editor {
-          font-family: var(--mono);
-          font-size: 12px;
-          line-height: 1.6;
-          background: #060907;
-          min-height: 260px;
-          white-space: pre;
-        }
-
-        .code-hint {
-          font-size: 11px;
-          color: var(--text-faint);
-          line-height: 1.6;
-          margin: 0;
-        }
-
-        .code-hint code {
-          background: var(--panel-raised);
-          padding: 1px 5px;
-          border-radius: 4px;
-        }
-
-        .code-error {
-          background: var(--danger-dim);
-          color: var(--danger);
-          font-size: 12px;
-          padding: 8px 10px;
-          border-radius: 6px;
-          margin: 0;
-        }
-
-        .code-ok {
-          background: var(--signal-dim);
-          color: var(--signal);
-          font-size: 12px;
-          padding: 8px 10px;
-          border-radius: 6px;
-          margin: 0;
-        }
-
-        .btn-add {
-          background: none;
-          border: none;
-          color: var(--signal);
-          font-size: 12px;
-          cursor: pointer;
-          padding: 0;
-        }
-
-        .empty-rules {
-          font-size: 12px;
-          color: var(--text-faint);
-          margin: 0;
-        }
-
-        .rule-row {
-          display: grid;
-          grid-template-columns: 1fr 100px 1fr auto;
-          gap: 6px;
-          align-items: center;
-        }
-
-        .rule-row select {
-          font-size: 11px;
-          padding: 8px 4px;
-        }
-
-        .btn-remove {
-          background: var(--panel-raised);
-          border: 1px solid var(--border);
-          color: var(--text-faint);
-          width: 30px;
-          height: 34px;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 16px;
-          line-height: 1;
-        }
-
-        .btn-remove:hover {
-          color: var(--danger);
-          border-color: var(--danger);
-        }
-
-        .btn-save {
-          align-self: flex-start;
-          background: var(--signal);
-          color: #06120c;
-          border: none;
-          padding: 9px 18px;
-          border-radius: 6px;
-          font-weight: 700;
-          font-size: 12px;
-          cursor: pointer;
+          color: #6a6b6e;
           margin-top: 4px;
         }
 
-        .btn-save:disabled {
-          opacity: 0.5;
+        .brut-badge {
+          font-size: 11px;
+          font-weight: 700;
+          padding: 4px 12px;
+          border: 2px solid;
+          letter-spacing: 1px;
         }
 
-        .add-command-row {
+        .brut-badge.live {
+          color: #00ff66;
+          border-color: #00ff66;
+          background: rgba(0, 255, 102, 0.05);
+        }
+
+        .brut-badge.dead {
+          color: #6a6b6e;
+          border-color: #4a4b4e;
+        }
+
+        .brut-stats {
+          display: flex;
+          gap: 24px;
+          margin-bottom: 16px;
+          font-size: 11px;
+          color: #6a6b6e;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+        }
+
+        .brut-stat {
+          border-right: 2px solid #1a1b1e;
+          padding-right: 24px;
+        }
+
+        .brut-stat:last-child {
+          border-right: none;
+        }
+
+        .brut-actions {
+          display: flex;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .brut-btn {
+          padding: 8px 16px;
+          border: 2px solid #2a2b2e;
+          background: #0a0b0e;
+          color: #aaa;
+          font-family: 'Courier New', monospace;
+          font-weight: 700;
+          font-size: 11px;
+          letter-spacing: 0.5px;
+          cursor: pointer;
+          transition: all 0.1s ease;
+          text-transform: uppercase;
+        }
+
+        .brut-btn:hover {
+          background: #1a1b1e;
+          border-color: #4a4b4e;
+          color: #fff;
+        }
+
+        .brut-btn:active {
+          transform: scale(0.95);
+        }
+
+        .brut-btn-toggle {
+          color: #00ff66;
+          border-color: #00ff66;
+        }
+
+        .brut-btn-toggle:hover {
+          background: rgba(0, 255, 102, 0.05);
+        }
+
+        .brut-btn-edit {
+          color: #ffcc00;
+          border-color: #ffcc00;
+        }
+
+        .brut-btn-edit:hover {
+          background: rgba(255, 204, 0, 0.05);
+        }
+
+        .brut-btn-danger {
+          color: #ff0055;
+          border-color: #ff0055;
+        }
+
+        .brut-btn-danger:hover {
+          background: rgba(255, 0, 85, 0.05);
+        }
+
+        .brut-editor {
+          margin-top: 20px;
+          padding-top: 20px;
+          border-top: 2px solid #1a1b1e;
+        }
+
+        .brut-tabs {
+          display: flex;
+          gap: 0;
+          margin-bottom: 20px;
+          border: 2px solid #2a2b2e;
+        }
+
+        .brut-tab {
+          flex: 1;
+          padding: 10px;
+          background: #0a0b0e;
+          border: none;
+          color: #6a6b6e;
+          font-family: 'Courier New', monospace;
+          font-weight: 700;
+          font-size: 11px;
+          cursor: pointer;
+          transition: all 0.1s ease;
+          letter-spacing: 0.5px;
+          border-right: 2px solid #2a2b2e;
+        }
+
+        .brut-tab:last-child {
+          border-right: none;
+        }
+
+        .brut-tab:hover {
+          background: #1a1b1e;
+        }
+
+        .brut-tab.active {
+          background: #1a1b1e;
+          color: #fff;
+          border-bottom: 3px solid #ffcc00;
+        }
+
+        .brut-field {
+          margin-bottom: 16px;
+        }
+
+        .brut-field label {
+          display: block;
+          font-size: 10px;
+          color: #6a6b6e;
+          font-weight: 700;
+          letter-spacing: 1px;
+          margin-bottom: 6px;
+          text-transform: uppercase;
+        }
+
+        .brut-input {
+          width: 100%;
+          padding: 10px;
+          background: #0a0b0e;
+          border: 2px solid #2a2b2e;
+          color: #fff;
+          font-family: 'Courier New', monospace;
+          font-size: 12px;
+          outline: none;
+          transition: border-color 0.1s ease;
+        }
+
+        .brut-input:focus {
+          border-color: #ffcc00;
+        }
+
+        .brut-select {
+          padding: 10px;
+          background: #0a0b0e;
+          border: 2px solid #2a2b2e;
+          color: #fff;
+          font-family: 'Courier New', monospace;
+          font-size: 12px;
+          outline: none;
+        }
+
+        .brut-rules-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin: 16px 0 12px;
+        }
+
+        .brut-rules-header label {
+          font-size: 10px;
+          color: #6a6b6e;
+          font-weight: 700;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+        }
+
+        .brut-btn-add {
+          background: none;
+          border: 2px solid #ffcc00;
+          color: #ffcc00;
+          padding: 4px 12px;
+          font-family: 'Courier New', monospace;
+          font-weight: 700;
+          font-size: 11px;
+          cursor: pointer;
+          transition: all 0.1s ease;
+        }
+
+        .brut-btn-add:hover {
+          background: rgba(255, 204, 0, 0.05);
+        }
+
+        .brut-empty {
+          padding: 24px;
+          text-align: center;
+          color: #4a4b4e;
+          font-size: 14px;
+          border: 2px dashed #2a2b2e;
+          margin: 12px 0;
+          font-weight: 700;
+        }
+
+        .brut-rule {
+          display: grid;
+          grid-template-columns: 1fr 100px 1fr auto;
+          gap: 8px;
+          margin-bottom: 8px;
+          align-items: center;
+        }
+
+        .brut-btn-remove {
+          background: #0a0b0e;
+          border: 2px solid #2a2b2e;
+          color: #6a6b6e;
+          padding: 8px 12px;
+          cursor: pointer;
+          font-weight: 700;
+          transition: all 0.1s ease;
+        }
+
+        .brut-btn-remove:hover {
+          border-color: #ff0055;
+          color: #ff0055;
+        }
+
+        .brut-btn-save {
+          padding: 10px 24px;
+          background: #0a0b0e;
+          border: 2px solid #00ff66;
+          color: #00ff66;
+          font-family: 'Courier New', monospace;
+          font-weight: 700;
+          font-size: 12px;
+          cursor: pointer;
+          transition: all 0.1s ease;
+          margin-top: 8px;
+          letter-spacing: 0.5px;
+        }
+
+        .brut-btn-save:hover:not(:disabled) {
+          background: rgba(0, 255, 102, 0.05);
+        }
+
+        .brut-btn-save:disabled {
+          opacity: 0.3;
+          cursor: not-allowed;
+        }
+
+        .brut-templates {
+          display: flex;
+          gap: 8px;
+          align-items: center;
+          margin-bottom: 16px;
+          flex-wrap: wrap;
+        }
+
+        .brut-label-sm {
+          font-size: 10px;
+          color: #6a6b6e;
+          font-weight: 700;
+          letter-spacing: 1px;
+          text-transform: uppercase;
+        }
+
+        .brut-btn-sm {
+          padding: 4px 12px;
+          background: #0a0b0e;
+          border: 2px solid #2a2b2e;
+          color: #aaa;
+          font-family: 'Courier New', monospace;
+          font-size: 10px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.1s ease;
+          letter-spacing: 0.5px;
+        }
+
+        .brut-btn-sm:hover {
+          border-color: #4a4b4e;
+          color: #fff;
+        }
+
+        .brut-add-cmd {
+          display: flex;
+          gap: 8px;
+          margin-bottom: 16px;
+        }
+
+        .brut-commands {
+          margin: 12px 0 16px;
+        }
+
+        .brut-cmd-item {
+          border: 2px solid #2a2b2e;
+          padding: 12px;
+          margin-bottom: 12px;
+          background: #0a0b0e;
+        }
+
+        .brut-cmd-trigger {
+          display: inline-block;
+          padding: 2px 12px;
+          background: #1a1b1e;
+          color: #ffcc00;
+          font-weight: 700;
+          font-size: 12px;
+          border: 2px solid #2a2b2e;
+          margin-bottom: 8px;
+          font-family: 'Courier New', monospace;
+        }
+
+        .brut-cmd-actions {
           display: flex;
           gap: 8px;
         }
 
-        .btn-new-cmd {
-          margin-top: 0;
-          white-space: nowrap;
-          flex-shrink: 0;
-        }
-
-        .command-list {
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-
-        .command-item {
-          background: var(--bg);
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          padding: 10px;
-        }
-
-        .command-trigger {
-          display: inline-block;
-          font-family: var(--mono);
-          font-size: 12px;
-          color: var(--signal);
-          background: var(--signal-dim);
-          padding: 3px 10px;
-          border-radius: 100px;
-          margin-bottom: 8px;
-        }
-
-        .command-row {
-          display: flex;
-          gap: 6px;
-          align-items: center;
-        }
-
-        .btn-edit-code {
+        .brut-btn-code {
           flex: 1;
-          background: var(--panel-raised);
-          border: 1px solid var(--border);
-          color: var(--signal);
-          padding: 8px 10px;
-          border-radius: 6px;
+          padding: 8px;
+          background: #0a0b0e;
+          border: 2px solid #2a2b2e;
+          color: #aaa;
+          font-family: 'Courier New', monospace;
+          font-size: 11px;
+          font-weight: 700;
+          cursor: pointer;
+          transition: all 0.1s ease;
+          letter-spacing: 0.5px;
+        }
+
+        .brut-btn-code:hover {
+          border-color: #4a4b4e;
+          color: #fff;
+        }
+
+        .brut-code-editor {
+          margin-top: 12px;
+          padding-top: 12px;
+          border-top: 2px dashed #2a2b2e;
+        }
+
+        .brut-code-area {
+          width: 100%;
+          padding: 12px;
+          background: #050608;
+          border: 2px solid #2a2b2e;
+          color: #00ff66;
+          font-family: 'Courier New', monospace;
           font-size: 12px;
-          font-family: var(--mono);
-          cursor: pointer;
+          line-height: 1.6;
+          outline: none;
+          min-height: 260px;
         }
 
-        .btn-edit-code:hover {
-          border-color: var(--signal);
+        .brut-code-area:focus {
+          border-color: #ffcc00;
         }
 
-        .btn-icon {
-          background: var(--panel-raised);
-          border: 1px solid var(--border);
-          color: var(--text-dim);
-          width: 32px;
-          height: 32px;
-          flex-shrink: 0;
-          border-radius: 6px;
-          cursor: pointer;
-          font-size: 13px;
+        .brut-code-hint {
+          padding: 8px;
+          background: #1a1b1e;
+          font-size: 10px;
+          color: #6a6b6e;
+          font-weight: 700;
+          letter-spacing: 0.5px;
+          margin: 4px 0;
         }
 
-        .btn-icon:hover {
-          color: var(--signal);
-          border-color: var(--signal-dim);
+        .brut-error {
+          padding: 10px;
+          background: rgba(255, 0, 85, 0.05);
+          border: 2px solid #ff0055;
+          color: #ff0055;
+          font-size: 12px;
+          font-weight: 700;
+          margin: 4px 0;
         }
 
-        .btn-icon-danger:hover {
-          color: var(--danger);
-          border-color: var(--danger);
+        .brut-success {
+          padding: 10px;
+          background: rgba(0, 255, 102, 0.05);
+          border: 2px solid #00ff66;
+          color: #00ff66;
+          font-size: 12px;
+          font-weight: 700;
+          margin: 4px 0;
         }
 
-        .command-editor {
-          margin-top: 10px;
-          padding-top: 10px;
-          border-top: 1px dashed var(--border);
-          display: flex;
-          flex-direction: column;
-          gap: 10px;
-        }
-
-        @media (max-width: 480px) {
-          .rule-row {
+        @media (max-width: 640px) {
+          .brut-rule {
             grid-template-columns: 1fr;
+          }
+          
+          .brut-header {
+            flex-direction: column;
+            gap: 12px;
           }
         }
       `}</style>
