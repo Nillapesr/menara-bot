@@ -102,8 +102,10 @@ export default function AdminPage() {
                 <th>Nama Bot</th>
                 <th>Status</th>
                 <th>Mode</th>
+                <th>Commands</th>
                 <th>Pesan Diproses</th>
-                <th>Pemilik (ID)</th>
+                <th>Pemilik</th>
+                <th>Server / Webhook</th>
               </tr>
             </thead>
             <tbody>
@@ -117,12 +119,17 @@ export default function AdminPage() {
                     </span>
                   </td>
                   <td>{b.mode}</td>
+                  <td>{b.commandCount ?? 0}</td>
                   <td>{b.messageCount}</td>
-                  <td className="mono">{b.ownerId}</td>
+                  <td>
+                    <div>{b.ownerName}</div>
+                    <div className="mono">{b.ownerEmail}</div>
+                  </td>
+                  <td className="mono server-url">{b.serverUrl}</td>
                 </tr>
               ))}
               {data?.bots?.length === 0 && (
-                <tr><td colSpan={6} className="empty">Belum ada bot terpasang.</td></tr>
+                <tr><td colSpan={8} className="empty">Belum ada bot terpasang.</td></tr>
               )}
             </tbody>
           </table>
@@ -261,6 +268,11 @@ export default function AdminPage() {
           font-family: var(--mono);
           font-size: 11px;
           color: #555;
+        }
+
+        .server-url {
+          max-width: 260px;
+          word-break: break-all;
         }
 
         .badge {
