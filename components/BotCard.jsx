@@ -291,13 +291,13 @@ export default function BotCard({ bot, onChange }) {
                       onChange={(e) => updateRule(idx, 'reply', e.target.value)}
                     />
                     <button onClick={() => removeRule(idx)} className="btn-remove" aria-label="Hapus kata kunci">
-                      ×
+                      Ã
                     </button>
                   </div>
                 ))}
 
                 <button onClick={saveRules} disabled={saving} className="btn-save">
-                  {saving ? 'Menyimpan…' : 'Simpan pengaturan'}
+                  {saving ? 'Menyimpanâ¦' : 'Simpan pengaturan'}
                 </button>
               </>
             )}
@@ -316,7 +316,7 @@ export default function BotCard({ bot, onChange }) {
 
                 <div className="add-command-row">
                   <input
-                    placeholder="/start, /play, help_menu…"
+                    placeholder="/start, /play, help_menuâ¦"
                     value={newTrigger}
                     onChange={(e) => setNewTrigger(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && addCommand()}
@@ -350,14 +350,14 @@ export default function BotCard({ bot, onChange }) {
                           onClick={() => (editingId === cmd.id ? closeEditor() : openEditor(cmd))}
                           aria-label="Edit"
                         >
-                          ✎
+                          â
                         </button>
                         <button
                           className="btn-icon btn-icon-danger"
                           onClick={() => removeCommand(cmd.id)}
                           aria-label="Hapus command"
                         >
-                          🗑
+                          ð
                         </button>
                       </div>
 
@@ -391,7 +391,7 @@ export default function BotCard({ bot, onChange }) {
                             disabled={draftSaving}
                             className="btn-save"
                           >
-                            {draftSaving ? 'Menyimpan…' : 'Simpan & aktifkan kode'}
+                            {draftSaving ? 'Menyimpanâ¦' : 'Simpan & aktifkan kode'}
                           </button>
                         </div>
                       )}
@@ -418,17 +418,18 @@ export default function BotCard({ bot, onChange }) {
         .card {
           position: relative;
           display: flex;
-          background: var(--panel);
-          border: 1px solid var(--border);
-          border-radius: 10px;
+          background: linear-gradient(180deg, var(--panel) 0%, #0d0f16 100%);
+          border: 1px solid var(--border-solid);
+          border-radius: 14px;
           overflow: hidden;
+          box-shadow: 0 1px 0 rgba(255,255,255,0.02) inset, 0 20px 40px -24px rgba(0,0,0,0.6);
         }
 
         .pulse-bar {
-          width: 4px;
+          width: 3px;
           flex-shrink: 0;
-          background: var(--signal);
-          animation: pulse 2.2s ease-in-out infinite;
+          background: var(--signal-grad);
+          animation: pulse 2.6s ease-in-out infinite;
         }
 
         .card.paused .pulse-bar {
@@ -438,12 +439,12 @@ export default function BotCard({ bot, onChange }) {
 
         @keyframes pulse {
           0%, 100% { opacity: 1; }
-          50% { opacity: 0.35; }
+          50% { opacity: 0.4; }
         }
 
         .card-body {
           flex: 1;
-          padding: 18px 20px;
+          padding: 20px 22px;
           min-width: 0;
         }
 
@@ -455,14 +456,15 @@ export default function BotCard({ bot, onChange }) {
         }
 
         .username {
-          font-family: var(--mono);
+          font-family: var(--display);
           font-weight: 700;
-          font-size: 15px;
+          font-size: 16px;
+          letter-spacing: -0.01em;
           margin: 0;
         }
 
         .name {
-          margin: 2px 0 0;
+          margin: 3px 0 0;
           color: var(--text-dim);
           font-size: 12px;
         }
@@ -471,26 +473,44 @@ export default function BotCard({ bot, onChange }) {
           font-size: 10px;
           font-family: var(--mono);
           text-transform: uppercase;
-          letter-spacing: 0.05em;
-          padding: 3px 8px;
+          letter-spacing: 0.08em;
+          padding: 4px 10px 4px 8px;
           border-radius: 100px;
           flex-shrink: 0;
+          display: inline-flex;
+          align-items: center;
+          gap: 5px;
+        }
+
+        .badge::before {
+          content: '';
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: currentColor;
         }
 
         .badge.live {
-          background: var(--signal-dim);
-          color: var(--signal);
+          background: linear-gradient(180deg, rgba(124,92,255,0.16), rgba(74,212,255,0.10));
+          color: var(--signal-2);
+          border: 1px solid rgba(124,92,255,0.3);
+        }
+
+        .badge.live::before {
+          animation: pulse 1.8s ease-in-out infinite;
         }
 
         .badge.off {
           background: var(--panel-raised);
           color: var(--text-faint);
+          border: 1px solid var(--border-solid);
         }
 
         .meta-row {
           margin-top: 10px;
           font-size: 12px;
           color: var(--text-faint);
+          font-family: var(--mono);
         }
 
         .actions {
@@ -502,17 +522,19 @@ export default function BotCard({ bot, onChange }) {
 
         .btn-secondary, .btn-danger {
           background: var(--panel-raised);
-          border: 1px solid var(--border);
+          border: 1px solid var(--border-solid);
           color: var(--text-dim);
-          padding: 7px 12px;
-          border-radius: 6px;
+          padding: 8px 14px;
+          border-radius: 8px;
           font-size: 12px;
+          font-weight: 500;
           cursor: pointer;
+          transition: border-color 0.15s ease, color 0.15s ease, transform 0.1s ease;
         }
 
         .btn-secondary:hover {
           color: var(--text);
-          border-color: var(--signal-dim);
+          border-color: rgba(124,92,255,0.4);
         }
 
         .btn-danger:hover {
@@ -520,10 +542,14 @@ export default function BotCard({ bot, onChange }) {
           border-color: var(--danger);
         }
 
+        .btn-secondary:active, .btn-danger:active {
+          transform: scale(0.97);
+        }
+
         .editor {
           margin-top: 18px;
           padding-top: 16px;
-          border-top: 1px solid var(--border);
+          border-top: 1px solid var(--border-solid);
           display: flex;
           flex-direction: column;
           gap: 12px;
@@ -542,18 +568,20 @@ export default function BotCard({ bot, onChange }) {
         textarea, input, select {
           width: 100%;
           background: var(--bg);
-          border: 1px solid var(--border);
+          border: 1px solid var(--border-solid);
           color: var(--text);
-          padding: 8px 10px;
-          border-radius: 6px;
+          padding: 9px 11px;
+          border-radius: 8px;
           font-size: 13px;
           font-family: var(--sans);
           outline: none;
           resize: vertical;
+          transition: border-color 0.15s ease, box-shadow 0.15s ease;
         }
 
         textarea:focus, input:focus, select:focus {
           border-color: var(--signal);
+          box-shadow: 0 0 0 3px rgba(124,92,255,0.15);
         }
 
         .rules-head {
@@ -567,24 +595,29 @@ export default function BotCard({ bot, onChange }) {
           display: flex;
           gap: 6px;
           margin-bottom: 4px;
+          background: var(--bg);
+          padding: 4px;
+          border-radius: 10px;
+          border: 1px solid var(--border-solid);
         }
 
         .mode-btn {
           flex: 1;
-          background: var(--bg);
-          border: 1px solid var(--border);
+          background: transparent;
+          border: 1px solid transparent;
           color: var(--text-faint);
           padding: 8px 10px;
-          border-radius: 6px;
+          border-radius: 7px;
           font-size: 11px;
+          font-weight: 600;
           cursor: pointer;
           text-align: center;
+          transition: background 0.15s ease, color 0.15s ease;
         }
 
         .mode-btn.active {
-          border-color: var(--signal);
-          color: var(--signal);
-          background: var(--signal-dim);
+          color: #fff;
+          background: var(--signal-grad);
         }
 
         .template-row {
@@ -602,8 +635,9 @@ export default function BotCard({ bot, onChange }) {
         .code-editor {
           font-family: var(--mono);
           font-size: 12px;
-          line-height: 1.6;
-          background: #060907;
+          line-height: 1.65;
+          background: #05060a;
+          border: 1px solid var(--border-solid);
           min-height: 260px;
           white-space: pre;
         }
@@ -617,8 +651,10 @@ export default function BotCard({ bot, onChange }) {
 
         .code-hint code {
           background: var(--panel-raised);
+          border: 1px solid var(--border-solid);
           padding: 1px 5px;
           border-radius: 4px;
+          color: var(--signal-2);
         }
 
         .code-error {
@@ -668,14 +704,15 @@ export default function BotCard({ bot, onChange }) {
 
         .btn-remove {
           background: var(--panel-raised);
-          border: 1px solid var(--border);
+          border: 1px solid var(--border-solid);
           color: var(--text-faint);
           width: 30px;
           height: 34px;
-          border-radius: 6px;
+          border-radius: 8px;
           cursor: pointer;
           font-size: 16px;
           line-height: 1;
+          transition: border-color 0.15s ease, color 0.15s ease;
         }
 
         .btn-remove:hover {
@@ -685,19 +722,29 @@ export default function BotCard({ bot, onChange }) {
 
         .btn-save {
           align-self: flex-start;
-          background: var(--signal);
-          color: #06120c;
+          background: var(--signal-grad);
+          color: #fff;
           border: none;
-          padding: 9px 18px;
-          border-radius: 6px;
-          font-weight: 700;
+          padding: 10px 20px;
+          border-radius: 8px;
+          font-weight: 600;
           font-size: 12px;
           cursor: pointer;
           margin-top: 4px;
+          transition: filter 0.15s ease, transform 0.1s ease;
+        }
+
+        .btn-save:hover:not(:disabled) {
+          filter: brightness(1.1);
+        }
+
+        .btn-save:active:not(:disabled) {
+          transform: scale(0.97);
         }
 
         .btn-save:disabled {
           opacity: 0.5;
+          cursor: default;
         }
 
         .add-command-row {
@@ -712,27 +759,61 @@ export default function BotCard({ bot, onChange }) {
         }
 
         .command-list {
+          position: relative;
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 0;
+          margin-left: 6px;
+          padding-left: 16px;
+          border-left: 1px dashed var(--border-solid);
         }
 
         .command-item {
-          background: var(--bg);
-          border: 1px solid var(--border);
-          border-radius: 8px;
-          padding: 10px;
+          position: relative;
+          background: var(--panel-raised);
+          border: 1px solid var(--border-solid);
+          border-radius: 10px;
+          padding: 12px;
+          margin-bottom: 10px;
+          transition: border-color 0.15s ease;
+        }
+
+        .command-item::before {
+          content: '';
+          position: absolute;
+          left: -16px;
+          top: 20px;
+          width: 14px;
+          height: 1px;
+          background: var(--border-solid);
+        }
+
+        .command-item::after {
+          content: '';
+          position: absolute;
+          left: -19px;
+          top: 16px;
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: var(--signal-2);
+          box-shadow: 0 0 0 3px rgba(74,212,255,0.15);
+        }
+
+        .command-item:hover {
+          border-color: rgba(124,92,255,0.35);
         }
 
         .command-trigger {
           display: inline-block;
           font-family: var(--mono);
+          font-weight: 600;
           font-size: 12px;
-          color: var(--signal);
-          background: var(--signal-dim);
-          padding: 3px 10px;
+          color: #fff;
+          background: var(--signal-grad);
+          padding: 4px 12px;
           border-radius: 100px;
-          margin-bottom: 8px;
+          margin-bottom: 10px;
         }
 
         .command-row {
@@ -743,35 +824,40 @@ export default function BotCard({ bot, onChange }) {
 
         .btn-edit-code {
           flex: 1;
-          background: var(--panel-raised);
-          border: 1px solid var(--border);
-          color: var(--signal);
-          padding: 8px 10px;
-          border-radius: 6px;
+          background: var(--bg);
+          border: 1px solid var(--border-solid);
+          color: var(--signal-2);
+          padding: 9px 12px;
+          border-radius: 8px;
           font-size: 12px;
+          font-weight: 500;
           font-family: var(--mono);
           cursor: pointer;
+          text-align: left;
+          transition: border-color 0.15s ease, background 0.15s ease;
         }
 
         .btn-edit-code:hover {
           border-color: var(--signal);
+          background: var(--signal-dim);
         }
 
         .btn-icon {
-          background: var(--panel-raised);
-          border: 1px solid var(--border);
+          background: var(--bg);
+          border: 1px solid var(--border-solid);
           color: var(--text-dim);
-          width: 32px;
-          height: 32px;
+          width: 34px;
+          height: 34px;
           flex-shrink: 0;
-          border-radius: 6px;
+          border-radius: 8px;
           cursor: pointer;
           font-size: 13px;
+          transition: border-color 0.15s ease, color 0.15s ease;
         }
 
         .btn-icon:hover {
-          color: var(--signal);
-          border-color: var(--signal-dim);
+          color: var(--signal-2);
+          border-color: rgba(124,92,255,0.4);
         }
 
         .btn-icon-danger:hover {
@@ -782,7 +868,7 @@ export default function BotCard({ bot, onChange }) {
         .command-editor {
           margin-top: 10px;
           padding-top: 10px;
-          border-top: 1px dashed var(--border);
+          border-top: 1px dashed var(--border-solid);
           display: flex;
           flex-direction: column;
           gap: 10px;
