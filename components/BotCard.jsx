@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 const TEMPLATE_BASIC = `// Fungsi handle(ctx) dipanggil setiap ada pesan/klik tombol masuk ke command ini.
 // ctx.text -> teks pesan dari user
@@ -35,6 +35,72 @@ async function handle(ctx) {
   await ctx.sendMessage(reply);
 }`;
 
+const TEMPLATE_WELCOME = `// Trigger command ini WAJIB diisi "@join" (bukan teks biasa).
+// Otomatis jalan tiap kali ada anggota baru masuk grup.
+// Syarat: bot harus jadi admin grup di Telegram (Add Admin), minimal
+// dengan izin "Invite Users" supaya bisa baca event anggota masuk.
+
+async function handle(ctx) {
+  const names = (ctx.newChatMembers || [])
+    .map((u) => u.first_name || u.username || 'teman baru')
+    .join(', ');
+
+  await ctx.sendMessage(
+    \`👋 Selamat datang, \${names}! Baca dulu aturan grup ya sebelum chat.\`
+  );
+}`;
+
+const TEMPLATE_MODERATION = `// Contoh command moderasi grup: /mute, /kick, /ban, /pin (balas pesan target lalu ketik command).
+// Trigger command ini contohnya diisi "/mute".
+// PENTING:
+// - Bot harus jadi admin grup di Telegram dengan izin "Restrict/Ban/Pin Members".
+// - Kode ini SELALU cek dulu apakah yang memanggil command adalah admin grup,
+//   supaya member biasa tidak bisa nge-mute/ban orang lain.
+// - Command harus dipakai dengan cara reply ke pesan orang yang mau dimoderasi.
+
+async function handle(ctx) {
+  // Cegah pemakaian di luar grup
+  if (ctx.chatType !== 'group' && ctx.chatType !== 'supergroup') {
+    await ctx.sendMessage('Command ini cuma bisa dipakai di dalam grup.');
+    return;
+  }
+
+  // Hanya admin grup yang boleh pakai command ini
+  const callerIsAdmin = await ctx.isGroupAdmin(ctx.from?.id);
+  if (!callerIsAdmin) {
+    await ctx.sendMessage('Cuma admin grup yang boleh pakai command ini.');
+    return;
+  }
+
+  // User target harus didapat dari pesan yang di-reply
+  const target = ctx.message?.reply_to_message?.from;
+  if (!target) {
+    await ctx.sendMessage('Reply pesan orang yang mau dimoderasi, baru ketik command ini.');
+    return;
+  }
+
+  // --- Pilih salah satu aksi sesuai kebutuhan, hapus yang lain ---
+
+  // Mute 1 jam:
+  await ctx.muteUser(target.id, 60 * 60);
+  await ctx.sendMessage(\`🔇 \${target.first_name} dimute selama 1 jam.\`);
+
+  // Unmute:
+  // await ctx.unmuteUser(target.id);
+
+  // Kick (boleh join lagi nanti):
+  // await ctx.kickUser(target.id);
+
+  // Ban permanen:
+  // await ctx.banUser(target.id);
+
+  // Unban:
+  // await ctx.unbanUser(target.id);
+
+  // Pin pesan yang di-reply:
+  // await ctx.pinMessage(target.message_id);
+}`;
+
 const TABS = [
   { id: 'intro', label: 'Intro', icon: '▦' },
   { id: 'commands', label: 'Commands', icon: '</>' },
@@ -66,6 +132,11 @@ export default function BotCard({ bot, onChange }) {
   const [addingCommand, setAddingCommand] = useState(false);
   const [search, setSearch] = useState('');
 
+  // ---- Import/export JSON state ----
+  const fileInputRef = useRef(null);
+  const [importing, setImporting] = useState(false);
+  const [importMsg, setImportMsg] = useState(null); // { type: 'ok' | 'error', text }
+
   // ---- Settings state (rules mode masih tersedia sebagai fallback) ----
   const [fallback, setFallback] = useState(bot.fallbackMessage || '');
   const [savingFallback, setSavingFallback] = useState(false);
@@ -88,8 +159,8 @@ export default function BotCard({ bot, onChange }) {
     setDraftSaved(false);
   }
 
-  async function addCommand(initialCode = '') {
-    const trigger = newTrigger.trim();
+  async function addCommand(initialCode = '', triggerOverride = null) {
+    const trigger = (triggerOverride ?? newTrigger).trim();
     if (!trigger) return;
     setAddingCommand(true);
     try {
@@ -148,9 +219,100 @@ export default function BotCard({ bot, onChange }) {
     }
   }
 
-  function loadTemplate(tpl) {
-    setNewTrigger((t) => t || '/start');
-    addCommand(tpl);
+  function loadTemplate(tpl, defaultTrigger = '/start') {
+    const trigger = newTrigger.trim() || defaultTrigger;
+    setNewTrigger(trigger);
+    addCommand(tpl, trigger);
+  }
+
+  // ---- Export: unduh semua command bot ini sebagai file .json ----
+  function exportCommands() {
+    const payload = {
+      exportedFrom: 'menara-bot',
+      botUsername: bot.username,
+      exportedAt: new Date().toISOString(),
+      items: commands.map((c) => ({ trigger: c.trigger, code: c.code || '' })),
+    };
+    const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${(bot.username || 'bot').replace(/[^a-z0-9_-]/gi, '_')}-commands.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  // ---- Import: pilih file .json, kirim ke server buat divalidasi & disimpan ----
+  function pickImportFile() {
+    setImportMsg(null);
+    fileInputRef.current?.click();
+  }
+
+  async function handleImportFile(e) {
+    const file = e.target.files?.[0];
+    e.target.value = ''; // reset supaya bisa pilih file sama lagi nanti
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.json') && file.type !== 'application/json') {
+      setImportMsg({ type: 'error', text: 'File harus berformat .json.' });
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setImportMsg({ type: 'error', text: 'File terlalu besar (maksimal 2MB).' });
+      return;
+    }
+
+    setImporting(true);
+    setImportMsg(null);
+    try {
+      const text = await file.text();
+      let parsed;
+      try {
+        parsed = JSON.parse(text);
+      } catch {
+        setImportMsg({ type: 'error', text: 'File bukan JSON yang valid.' });
+        return;
+      }
+
+      const items = Array.isArray(parsed) ? parsed : parsed.items;
+      if (!Array.isArray(items)) {
+        setImportMsg({
+          type: 'error',
+          text: 'Format tidak dikenali. File harus berisi array command atau { "items": [...] }.',
+        });
+        return;
+      }
+
+      const res = await fetch(`/api/bots/${bot.id}/commands/import`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items }),
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setImportMsg({ type: 'error', text: data.error || 'Gagal mengimpor command.' });
+        return;
+      }
+
+      setCommands(data.commands);
+      onChange?.();
+
+      const skipped = data.rejected?.length || 0;
+      setImportMsg({
+        type: 'ok',
+        text: skipped
+          ? `${data.importedCount} command diimpor, ${skipped} dilewati (lihat konsol untuk detail).`
+          : `${data.importedCount} command berhasil diimpor.`,
+      });
+      if (skipped) console.warn('Command dilewati saat import:', data.rejected);
+    } catch (err) {
+      setImportMsg({ type: 'error', text: 'Tidak bisa menghubungi server.' });
+    } finally {
+      setImporting(false);
+    }
   }
 
   async function toggleStatus() {
@@ -274,13 +436,42 @@ export default function BotCard({ bot, onChange }) {
             <div className="tab-body">
               <div className="template-row">
                 <span className="template-label">Template:</span>
-                <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_BASIC)}>
+                <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_BASIC, '/start')}>
                   Dasar (teks + tombol)
                 </button>
-                <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_AI)}>
+                <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_AI, '/ai')}>
                   Terhubung AI
                 </button>
+                <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_WELCOME, '@join')}>
+                  Welcome Grup
+                </button>
+                <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_MODERATION, '/mute')}>
+                  Moderasi (mute/kick/ban/pin)
+                </button>
               </div>
+
+              <div className="io-row">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="application/json,.json"
+                  onChange={handleImportFile}
+                  style={{ display: 'none' }}
+                />
+                <button className="io-btn" onClick={pickImportFile} disabled={importing}>
+                  <span className="io-icon">⇧</span> {importing ? 'Mengimpor…' : 'Import JSON'}
+                </button>
+                <button className="io-btn" onClick={exportCommands} disabled={commands.length === 0}>
+                  <span className="io-icon">⇩</span> Export JSON
+                </button>
+                <span className="io-count">{commands.length} command</span>
+              </div>
+
+              {importMsg && (
+                <p className={importMsg.type === 'error' ? 'code-error' : 'code-ok'}>
+                  {importMsg.text}
+                </p>
+              )}
 
               <div className="cmd-toolbar">
                 <div className="search-box">
@@ -362,7 +553,13 @@ export default function BotCard({ bot, onChange }) {
                           Wajib mendefinisikan <code>async function handle(ctx)</code>. Tersedia:{' '}
                           <code>ctx.text</code>, <code>ctx.callbackData</code>, <code>ctx.sendMessage()</code>,{' '}
                           <code>ctx.sendPhoto()</code>, <code>ctx.answerCallback()</code>,{' '}
-                          <code>ctx.callAI()</code>, <code>ctx.fetchJSON()</code>.
+                          <code>ctx.callAI()</code>, <code>ctx.fetchJSON()</code>. Untuk grup:{' '}
+                          <code>ctx.chatType</code>, <code>ctx.newChatMembers</code>,{' '}
+                          <code>ctx.isGroupAdmin()</code>, <code>ctx.muteUser()</code>,{' '}
+                          <code>ctx.unmuteUser()</code>, <code>ctx.kickUser()</code>,{' '}
+                          <code>ctx.banUser()</code>, <code>ctx.unbanUser()</code>,{' '}
+                          <code>ctx.pinMessage()</code>, <code>ctx.unpinMessage()</code>. Trigger event khusus:{' '}
+                          <code>@join</code> (anggota baru), <code>@leave</code> (anggota keluar).
                         </p>
 
                         {draftError && <p className="code-error">{draftError}</p>}
@@ -741,6 +938,50 @@ export default function BotCard({ bot, onChange }) {
           font-size: 12px;
           cursor: pointer;
           padding: 0;
+        }
+
+        .io-row {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
+        }
+
+        .io-btn {
+          display: inline-flex;
+          align-items: center;
+          gap: 6px;
+          background: var(--panel-raised);
+          border: 1px solid var(--border-solid);
+          color: var(--text);
+          padding: 8px 14px;
+          border-radius: 100px;
+          font-size: 12px;
+          font-weight: 600;
+          cursor: pointer;
+          transition: border-color 0.15s ease, background 0.15s ease, transform 0.1s ease;
+        }
+
+        .io-btn:hover:not(:disabled) {
+          border-color: rgba(124,58,237,0.5);
+          background: var(--signal-dim);
+          color: var(--signal-2);
+          transform: translateY(-1px);
+        }
+
+        .io-btn:disabled {
+          opacity: 0.4;
+          cursor: default;
+        }
+
+        .io-icon {
+          font-size: 13px;
+        }
+
+        .io-count {
+          margin-left: auto;
+          font-size: 11px;
+          color: var(--text-faint);
         }
 
         .cmd-toolbar {
