@@ -7,14 +7,24 @@ const TEMPLATE_BASIC = `// Fungsi handle(ctx) dipanggil setiap ada pesan/klik to
 // ctx.callbackData -> data tombol yang diklik (kalau ini dipicu oleh callback)
 // ctx.sendMessage(text, { buttons }) -> kirim teks (+ tombol opsional)
 // ctx.sendPhoto(url, { caption, buttons }) -> kirim gambar
+// ctx.editMessageText(text, { buttons }) -> edit pesan yang tombolnya baru diklik
+// ctx.editMessageReplyMarkup(buttons) -> ganti/hapus tombol tanpa ubah teks
+// ctx.deleteMessage() -> hapus pesan yang tombolnya baru diklik
 // ctx.answerCallback(text) -> balas klik tombol (hilangkan loading di Telegram)
 // ctx.callAI({ apiKey, messages }) -> panggil API AI (format ChatGPT)
 // ctx.fetchJSON(url, opts) -> panggil API luar apa saja
+//
+// Semua teks/caption otomatis dirender pakai format HTML Telegram, jadi tag
+// seperti <b>tebal</b>, <i>miring</i>, <u>garis bawah</u>, <s>coret</s>,
+// <code>kode</code>, <pre>blok kode</pre>, <a href="https://...">link</a>,
+// <blockquote>kutipan</blockquote>, dan <tg-spoiler>spoiler</tg-spoiler>
+// langsung tampil terformat tanpa perlu setting apa pun.
 
 async function handle(ctx) {
-  await ctx.sendMessage('Halo! Bot ini pakai kode custom.', {
-    buttons: [[{ text: 'Lihat gambar', callback_data: 'lihat_gambar' }]],
-  });
+  await ctx.sendMessage(
+    '<b>Halo!</b> Bot ini pakai kode custom.\\n<blockquote>Bisa pakai tag HTML kayak gini.</blockquote>',
+    { buttons: [[{ text: 'Lihat gambar', callback_data: 'lihat_gambar' }]] }
+  );
 }`;
 
 const TEMPLATE_AI = `// Contoh command yang terhubung ke API ChatGPT (atau kompatibel OpenAI lain).
@@ -99,6 +109,37 @@ async function handle(ctx) {
 
   // Pin pesan yang di-reply:
   // await ctx.pinMessage(target.message_id);
+}`;
+
+const TEMPLATE_EDIT_DELETE = `// Contoh command dengan tombol yang mengedit / menghapus pesannya sendiri.
+// Trigger command ini contohnya diisi "/menu" (untuk munculkan pesan+tombol awal),
+// lalu buat 2 command LAIN dengan trigger PERSIS SAMA dengan callback_data
+// tombolnya, misalnya "edit_ya" dan "hapus_ya" (tanpa '/' di depan).
+
+async function handle(ctx) {
+  if (ctx.callbackData === 'edit_ya') {
+    // Tombol "Edit" diklik -> ubah teks & tombol pesan yang sama (bukan kirim pesan baru)
+    await ctx.editMessageText('<b>Pesan sudah diedit ✅</b>\\nIsi barunya kayak gini.', {
+      buttons: [[{ text: 'Hapus pesan ini', callback_data: 'hapus_ya' }]],
+    });
+    await ctx.answerCallback('Berhasil diedit!');
+    return;
+  }
+
+  if (ctx.callbackData === 'hapus_ya') {
+    // Tombol "Hapus" diklik -> hapus pesannya
+    await ctx.deleteMessage();
+    await ctx.answerCallback('Pesan dihapus.');
+    return;
+  }
+
+  // Belum ada callback -> ini pemanggilan awal command (mis. ketik "/menu")
+  await ctx.sendMessage('Pilih aksi untuk pesan ini:', {
+    buttons: [
+      [{ text: '✏️ Edit pesan', callback_data: 'edit_ya' }],
+      [{ text: '🗑️ Hapus pesan', callback_data: 'hapus_ya' }],
+    ],
+  });
 }`;
 
 const TABS = [
@@ -477,7 +518,17 @@ export default function BotCard({ bot, onChange }) {
                 <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_MODERATION, '/mute')}>
                   Moderasi (mute/kick/ban/pin)
                 </button>
+                <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_EDIT_DELETE, '/menu')}>
+                  Edit/Hapus Pesan via Tombol
+                </button>
               </div>
+              <p className="template-hint" style={{ opacity: 0.7, fontSize: '0.85em', margin: '4px 0 12px' }}>
+                💡 Template "Edit/Hapus Pesan via Tombol" butuh 3 command: satu untuk trigger
+                utama (mis. <code>/menu</code>), dan dua lagi dengan trigger persis sama dengan
+                callback_data tombolnya (<code>edit_ya</code> dan <code>hapus_ya</code>) —
+                semuanya bisa pakai kode yang sama, karena kode itu mengecek{' '}
+                <code>ctx.callbackData</code> untuk tahu tombol mana yang diklik.
+              </p>
 
               <div className="io-row">
                 <input
@@ -593,14 +644,21 @@ export default function BotCard({ bot, onChange }) {
                       <p className="code-hint">
                         Wajib mendefinisikan <code>async function handle(ctx)</code>. Tersedia:{' '}
                         <code>ctx.text</code>, <code>ctx.callbackData</code>, <code>ctx.sendMessage()</code>,{' '}
-                        <code>ctx.sendPhoto()</code>, <code>ctx.answerCallback()</code>,{' '}
+                        <code>ctx.sendPhoto()</code>, <code>ctx.editMessageText()</code>,{' '}
+                        <code>ctx.editMessageCaption()</code>, <code>ctx.editMessageReplyMarkup()</code>,{' '}
+                        <code>ctx.deleteMessage()</code>, <code>ctx.answerCallback()</code>,{' '}
                         <code>ctx.callAI()</code>, <code>ctx.fetchJSON()</code>. Untuk grup:{' '}
                         <code>ctx.chatType</code>, <code>ctx.newChatMembers</code>,{' '}
                         <code>ctx.isGroupAdmin()</code>, <code>ctx.muteUser()</code>,{' '}
                         <code>ctx.unmuteUser()</code>, <code>ctx.kickUser()</code>,{' '}
                         <code>ctx.banUser()</code>, <code>ctx.unbanUser()</code>,{' '}
                         <code>ctx.pinMessage()</code>, <code>ctx.unpinMessage()</code>. Trigger event khusus:{' '}
-                        <code>@join</code> (anggota baru), <code>@leave</code> (anggota keluar).
+                        <code>@join</code> (anggota baru), <code>@leave</code> (anggota keluar). Semua teks/caption
+                        otomatis diformat pakai <code>HTML</code> Telegram (<code>&lt;b&gt;</code>,{' '}
+                        <code>&lt;i&gt;</code>, <code>&lt;u&gt;</code>, <code>&lt;s&gt;</code>,{' '}
+                        <code>&lt;code&gt;</code>, <code>&lt;pre&gt;</code>, <code>&lt;a href&gt;</code>,{' '}
+                        <code>&lt;blockquote&gt;</code>, <code>&lt;tg-spoiler&gt;</code>) — override dengan{' '}
+                        <code>{'{ parseMode: null }'}</code> kalau mau teks polos.
                       </p>
 
                       {draftError && <p className="code-error">{draftError}</p>}
