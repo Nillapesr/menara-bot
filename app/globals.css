@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&family=Inter:wght@400;500;600;700&display=swap');
+
+:root {
+  --bg: #0b0f0e;
+  --panel: #121815;
+  --panel-raised: #171f1b;
+  --border: #232b27;
+  --text: #e8ece9;
+  --text-dim: #8a938d;
+  --text-faint: #545c57;
+  --signal: #5cf2a0;
+  --signal-dim: #2d5c42;
+  --danger: #ff6b4a;
+  --danger-dim: #5c3626;
+  --mono: 'JetBrains Mono', ui-monospace, monospace;
+  --sans: 'Inter', -apple-system, sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  background-image:
+    radial-gradient(circle at 15% 0%, rgba(92, 242, 160, 0.05), transparent 40%),
+    radial-gradient(circle at 85% 100%, rgba(92, 242, 160, 0.03), transparent 40%);
+  background-attachment: fixed;
+}
+
+a {
+  color: inherit;
+}
+
+button {
+  font-family: var(--sans);
+}
+
+::selection {
+  background: var(--signal-dim);
+  color: var(--text);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
