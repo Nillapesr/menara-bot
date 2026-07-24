@@ -29,7 +29,12 @@ export async function POST(req, { params }) {
 
   // Mode 1: bot berbasis command dengan kode JS per-command
   if (bot.mode === 'commands' && Array.isArray(bot.commands) && bot.commands.length) {
-    const matched = findMatchingCommand(bot.commands, { text, callbackData });
+    const matched = findMatchingCommand(bot.commands, {
+      text,
+      callbackData,
+      newChatMembers: message?.new_chat_members,
+      leftChatMember: message?.left_chat_member,
+    });
 
     if (matched && matched.code) {
       try {
@@ -50,7 +55,7 @@ export async function POST(req, { params }) {
         });
         await pushLog(bot.id, {
           from,
-          text: text || `[callback] ${callbackData}`,
+          text: text || (callbackData ? `[callback] ${callbackData}` : eventLabel(message)),
           reply: `(dijalankan oleh command "${matched.trigger}")`,
         });
       } catch (err) {
@@ -87,4 +92,16 @@ export async function POST(req, { params }) {
 // Telegram kadang cek endpoint dengan GET saat setup, balas OK saja
 export async function GET() {
   return NextResponse.json({ ok: true, message: 'Webhook aktif' });
+}
+
+function eventLabel(message) {
+  if (message?.new_chat_members?.length) {
+    const names = message.new_chat_members.map((u) => u.username || u.first_name).join(', ');
+    return `[anggota baru] ${names}`;
+  }
+  if (message?.left_chat_member) {
+    const u = message.left_chat_member;
+    return `[anggota keluar] ${u.username || u.first_name}`;
+  }
+  return '(event)';
 }
