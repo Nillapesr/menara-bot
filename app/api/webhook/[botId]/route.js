@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getBot, saveBot, pushLog, getStorage, setStorage } from '@/lib/db';
 import { findReply, sendTelegramMessage } from '@/lib/botEngine';
-import { runCustomHandler } from '@/lib/botRuntime';
+import { runCustomHandler, findMatchingCommand } from '@/lib/botRuntime';
 
 export const dynamic = 'force-dynamic';
 
@@ -15,40 +15,58 @@ export async function POST(req, { params }) {
 
   const update = await req.json();
   const message = update.message;
+  const callbackQuery = update.callback_query;
 
-  if (!message) {
+  if (!message && !callbackQuery) {
     return NextResponse.json({ ok: true });
   }
 
-  const chatId = message.chat?.id;
-  const text = message.text || '';
-  const from = message.from?.username || message.from?.first_name || 'unknown';
+  const chatId = message?.chat?.id || callbackQuery?.message?.chat?.id;
+  const text = message?.text || '';
+  const callbackData = callbackQuery?.data || '';
+  const fromUser = message?.from || callbackQuery?.from;
+  const from = fromUser?.username || fromUser?.first_name || 'unknown';
 
-  // Mode 1: kode custom milik user (engine JS bebas dalam sandbox terbatas)
-  if (bot.mode === 'custom' && bot.customCode) {
-    try {
-      const storageData = await getStorage(bot.id);
-      await runCustomHandler({
-        code: bot.customCode,
-        token: bot.token,
-        update,
-        env: {
-          storage: {
-            get: (key) => storageData?.[key],
-            set: async (key, value) => {
-              storageData[key] = value;
-              await setStorage(bot.id, storageData);
+  // Mode 1: bot berbasis command dengan kode JS per-command
+  if (bot.mode === 'commands' && Array.isArray(bot.commands) && bot.commands.length) {
+    const matched = findMatchingCommand(bot.commands, { text, callbackData });
+
+    if (matched && matched.code) {
+      try {
+        const storageData = await getStorage(bot.id);
+        await runCustomHandler({
+          code: matched.code,
+          token: bot.token,
+          update,
+          env: {
+            storage: {
+              get: (key) => storageData?.[key],
+              set: async (key, value) => {
+                storageData[key] = value;
+                await setStorage(bot.id, storageData);
+              },
             },
           },
-        },
-      });
-      await pushLog(bot.id, { from, text, reply: '(dijalankan oleh kode custom)' });
-    } catch (err) {
-      await pushLog(bot.id, { from, text, reply: `ERROR: ${err.message}` });
-      // Beri tahu user di Telegram kalau kodenya error, supaya gampang debug
-      try {
-        await sendTelegramMessage(bot.token, chatId, `⚠️ Bot error: ${err.message}`);
-      } catch (_) {}
+        });
+        await pushLog(bot.id, {
+          from,
+          text: text || `[callback] ${callbackData}`,
+          reply: `(dijalankan oleh command "${matched.trigger}")`,
+        });
+      } catch (err) {
+        await pushLog(bot.id, { from, text, reply: `ERROR: ${err.message}` });
+        if (chatId) {
+          try {
+            await sendTelegramMessage(bot.token, chatId, `⚠️ Bot error: ${err.message}`);
+          } catch (_) {}
+        }
+      }
+    } else if (text) {
+      // Tidak ada command yang cocok, pakai fallback message jika ada
+      if (bot.fallbackMessage) {
+        await sendTelegramMessage(bot.token, chatId, bot.fallbackMessage);
+      }
+      await pushLog(bot.id, { from, text, reply: bot.fallbackMessage || '(tidak ada balasan)' });
     }
   } else {
     // Mode 2 (default): rule-based sederhana, tanpa coding
