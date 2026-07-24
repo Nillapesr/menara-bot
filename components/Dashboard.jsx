@@ -135,16 +135,16 @@ export default function Dashboard() {
         .brand-mark {
           width: 10px;
           height: 34px;
-          background: var(--signal);
+          background: var(--signal-grad);
           border-radius: 2px;
-          box-shadow: 0 0 16px rgba(92, 242, 160, 0.5);
+          box-shadow: 0 0 16px rgba(124, 58, 237, 0.5);
           flex-shrink: 0;
         }
 
         h1 {
-          font-family: var(--mono);
+          font-family: var(--display);
           font-size: 26px;
-          font-weight: 800;
+          font-weight: 700;
           margin: 0;
           letter-spacing: -0.02em;
         }
@@ -239,9 +239,9 @@ export default function Dashboard() {
         }
 
         .bot-grid {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-          gap: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
           margin-top: 32px;
         }
 
