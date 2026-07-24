@@ -56,42 +56,95 @@ export default function BotCard({ bot, onChange }) {
   const [saving, setSaving] = useState(false);
   const [busy, setBusy] = useState(false);
   const [mode, setMode] = useState(bot.mode || 'rules');
-  const [customCode, setCustomCode] = useState(bot.customCode || '');
-  const [codeError, setCodeError] = useState('');
-  const [codeSaving, setCodeSaving] = useState(false);
-  const [codeSaved, setCodeSaved] = useState(false);
+  const [commands, setCommands] = useState(bot.commands || []);
+  const [editingId, setEditingId] = useState(null); // command yang sedang dibuka editornya
+  const [draftCode, setDraftCode] = useState('');
+  const [draftError, setDraftError] = useState('');
+  const [draftSaving, setDraftSaving] = useState(false);
+  const [draftSaved, setDraftSaved] = useState(false);
+  const [newTrigger, setNewTrigger] = useState('');
+  const [addingCommand, setAddingCommand] = useState(false);
 
   const isActive = bot.status === 'active';
 
-  async function saveCode() {
-    setCodeSaving(true);
-    setCodeError('');
-    setCodeSaved(false);
+  function openEditor(cmd) {
+    setEditingId(cmd.id);
+    setDraftCode(cmd.code || '');
+    setDraftError('');
+    setDraftSaved(false);
+  }
+
+  function closeEditor() {
+    setEditingId(null);
+    setDraftCode('');
+    setDraftError('');
+    setDraftSaved(false);
+  }
+
+  async function addCommand(initialCode = '') {
+    const trigger = newTrigger.trim();
+    if (!trigger) return;
+    setAddingCommand(true);
     try {
-      const res = await fetch(`/api/bots/${bot.id}/code`, {
+      const res = await fetch(`/api/bots/${bot.id}/commands`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: customCode }),
+        body: JSON.stringify({ trigger, code: initialCode }),
       });
       const data = await res.json();
       if (!res.ok) {
-        setCodeError(data.error || 'Gagal menyimpan kode.');
+        alert(data.error || 'Gagal menambah command.');
       } else {
-        setCodeSaved(true);
+        setCommands(data.commands);
+        setNewTrigger('');
+        setMode('commands');
+        onChange?.();
+        if (initialCode) openEditor(data.command);
+      }
+    } finally {
+      setAddingCommand(false);
+    }
+  }
+
+  async function saveCommandCode(cmdId) {
+    setDraftSaving(true);
+    setDraftError('');
+    setDraftSaved(false);
+    try {
+      const res = await fetch(`/api/bots/${bot.id}/commands/${cmdId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: draftCode }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setDraftError(data.error || 'Gagal menyimpan kode.');
+      } else {
+        setCommands(data.commands);
+        setDraftSaved(true);
         onChange?.();
       }
     } catch (e) {
-      setCodeError('Tidak bisa menghubungi server.');
+      setDraftError('Tidak bisa menghubungi server.');
     } finally {
-      setCodeSaving(false);
+      setDraftSaving(false);
+    }
+  }
+
+  async function removeCommand(cmdId) {
+    if (!confirm('Hapus command ini?')) return;
+    const res = await fetch(`/api/bots/${bot.id}/commands/${cmdId}`, { method: 'DELETE' });
+    const data = await res.json();
+    if (res.ok) {
+      setCommands(data.commands);
+      if (editingId === cmdId) closeEditor();
+      onChange?.();
     }
   }
 
   function loadTemplate(tpl) {
-    setCustomCode(tpl);
-    setMode('custom');
-    setCodeSaved(false);
-    setCodeError('');
+    setNewTrigger((t) => t || '/start');
+    addCommand(tpl);
   }
 
   async function toggleStatus() {
@@ -181,10 +234,10 @@ export default function BotCard({ bot, onChange }) {
                 Kata kunci (tanpa kode)
               </button>
               <button
-                className={`mode-btn ${mode === 'custom' ? 'active' : ''}`}
-                onClick={() => setMode('custom')}
+                className={`mode-btn ${mode === 'commands' ? 'active' : ''}`}
+                onClick={() => setMode('commands')}
               >
-                Kode custom (JS)
+                Commands (JS per-command)
               </button>
             </div>
 
@@ -249,7 +302,7 @@ export default function BotCard({ bot, onChange }) {
               </>
             )}
 
-            {mode === 'custom' && (
+            {mode === 'commands' && (
               <>
                 <div className="template-row">
                   <span className="template-label">Mulai dari template:</span>
@@ -261,31 +314,100 @@ export default function BotCard({ bot, onChange }) {
                   </button>
                 </div>
 
-                <textarea
-                  className="code-editor"
-                  value={customCode}
-                  onChange={(e) => {
-                    setCustomCode(e.target.value);
-                    setCodeSaved(false);
-                  }}
-                  rows={14}
-                  spellCheck={false}
-                  placeholder="async function handle(ctx) {&#10;  await ctx.sendMessage('Halo!');&#10;}"
-                />
+                <div className="add-command-row">
+                  <input
+                    placeholder="/start, /play, help_menu…"
+                    value={newTrigger}
+                    onChange={(e) => setNewTrigger(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && addCommand()}
+                  />
+                  <button
+                    className="btn-save btn-new-cmd"
+                    onClick={() => addCommand()}
+                    disabled={addingCommand || !newTrigger.trim()}
+                  >
+                    + New
+                  </button>
+                </div>
 
-                <p className="code-hint">
-                  Wajib mendefinisikan <code>async function handle(ctx)</code>. Tersedia:{' '}
-                  <code>ctx.text</code>, <code>ctx.sendMessage()</code>, <code>ctx.sendPhoto()</code>,{' '}
-                  <code>ctx.callAI()</code>, <code>ctx.fetchJSON()</code>. Tidak ada akses ke{' '}
-                  <code>require</code>/<code>process</code>/filesystem untuk keamanan bot lain.
-                </p>
+                {commands.length === 0 && (
+                  <p className="empty-rules">Belum ada command. Tambahkan trigger di atas untuk membuat command pertama.</p>
+                )}
 
-                {codeError && <p className="code-error">{codeError}</p>}
-                {codeSaved && <p className="code-ok">Kode tersimpan dan aktif.</p>}
+                <div className="command-list">
+                  {commands.map((cmd) => (
+                    <div className="command-item" key={cmd.id}>
+                      <div className="command-trigger">{cmd.trigger}</div>
+                      <div className="command-row">
+                        <button
+                          className="btn-edit-code"
+                          onClick={() => (editingId === cmd.id ? closeEditor() : openEditor(cmd))}
+                        >
+                          {'</> '}Edit JS
+                        </button>
+                        <button
+                          className="btn-icon"
+                          onClick={() => (editingId === cmd.id ? closeEditor() : openEditor(cmd))}
+                          aria-label="Edit"
+                        >
+                          ✎
+                        </button>
+                        <button
+                          className="btn-icon btn-icon-danger"
+                          onClick={() => removeCommand(cmd.id)}
+                          aria-label="Hapus command"
+                        >
+                          🗑
+                        </button>
+                      </div>
 
-                <button onClick={saveCode} disabled={codeSaving} className="btn-save">
-                  {codeSaving ? 'Menyimpan…' : 'Simpan & aktifkan kode'}
-                </button>
+                      {editingId === cmd.id && (
+                        <div className="command-editor">
+                          <textarea
+                            className="code-editor"
+                            value={draftCode}
+                            onChange={(e) => {
+                              setDraftCode(e.target.value);
+                              setDraftSaved(false);
+                            }}
+                            rows={12}
+                            spellCheck={false}
+                            placeholder="async function handle(ctx) {&#10;  await ctx.sendMessage('Halo!');&#10;}"
+                          />
+
+                          <p className="code-hint">
+                            Wajib mendefinisikan <code>async function handle(ctx)</code>. Tersedia:{' '}
+                            <code>ctx.text</code>, <code>ctx.callbackData</code>, <code>ctx.sendMessage()</code>,{' '}
+                            <code>ctx.sendPhoto()</code>, <code>ctx.sendButtons()</code>,{' '}
+                            <code>ctx.answerCallback()</code>, <code>ctx.callAI()</code>, <code>ctx.fetchJSON()</code>.
+                            Tidak ada akses ke <code>require</code>/<code>process</code>/filesystem.
+                          </p>
+
+                          {draftError && <p className="code-error">{draftError}</p>}
+                          {draftSaved && <p className="code-ok">Kode tersimpan dan aktif.</p>}
+
+                          <button
+                            onClick={() => saveCommandCode(cmd.id)}
+                            disabled={draftSaving}
+                            className="btn-save"
+                          >
+                            {draftSaving ? 'Menyimpan…' : 'Simpan & aktifkan kode'}
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="editor-field" style={{ marginTop: 8 }}>
+                  <label>Balasan default (jika tak ada command yang cocok)</label>
+                  <textarea
+                    value={fallback}
+                    onChange={(e) => setFallback(e.target.value)}
+                    rows={2}
+                    onBlur={saveRules}
+                  />
+                </div>
               </>
             )}
           </div>
@@ -576,6 +698,94 @@ export default function BotCard({ bot, onChange }) {
 
         .btn-save:disabled {
           opacity: 0.5;
+        }
+
+        .add-command-row {
+          display: flex;
+          gap: 8px;
+        }
+
+        .btn-new-cmd {
+          margin-top: 0;
+          white-space: nowrap;
+          flex-shrink: 0;
+        }
+
+        .command-list {
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+        }
+
+        .command-item {
+          background: var(--bg);
+          border: 1px solid var(--border);
+          border-radius: 8px;
+          padding: 10px;
+        }
+
+        .command-trigger {
+          display: inline-block;
+          font-family: var(--mono);
+          font-size: 12px;
+          color: var(--signal);
+          background: var(--signal-dim);
+          padding: 3px 10px;
+          border-radius: 100px;
+          margin-bottom: 8px;
+        }
+
+        .command-row {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+        }
+
+        .btn-edit-code {
+          flex: 1;
+          background: var(--panel-raised);
+          border: 1px solid var(--border);
+          color: var(--signal);
+          padding: 8px 10px;
+          border-radius: 6px;
+          font-size: 12px;
+          font-family: var(--mono);
+          cursor: pointer;
+        }
+
+        .btn-edit-code:hover {
+          border-color: var(--signal);
+        }
+
+        .btn-icon {
+          background: var(--panel-raised);
+          border: 1px solid var(--border);
+          color: var(--text-dim);
+          width: 32px;
+          height: 32px;
+          flex-shrink: 0;
+          border-radius: 6px;
+          cursor: pointer;
+          font-size: 13px;
+        }
+
+        .btn-icon:hover {
+          color: var(--signal);
+          border-color: var(--signal-dim);
+        }
+
+        .btn-icon-danger:hover {
+          color: var(--danger);
+          border-color: var(--danger);
+        }
+
+        .command-editor {
+          margin-top: 10px;
+          padding-top: 10px;
+          border-top: 1px dashed var(--border);
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
         }
 
         @media (max-width: 480px) {
