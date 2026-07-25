@@ -13,12 +13,6 @@ const TEMPLATE_BASIC = `// Fungsi handle(ctx) dipanggil setiap ada pesan/klik to
 // ctx.answerCallback(text) -> balas klik tombol (hilangkan loading di Telegram)
 // ctx.callAI({ apiKey, messages }) -> panggil API AI (format ChatGPT)
 // ctx.fetchJSON(url, opts) -> panggil API luar apa saja
-//
-// Semua teks/caption otomatis dirender pakai format HTML Telegram, jadi tag
-// seperti <b>tebal</b>, <i>miring</i>, <u>garis bawah</u>, <s>coret</s>,
-// <code>kode</code>, <pre>blok kode</pre>, <a href="https://...">link</a>,
-// <blockquote>kutipan</blockquote>, dan <tg-spoiler>spoiler</tg-spoiler>
-// langsung tampil terformat tanpa perlu setting apa pun.
 
 async function handle(ctx) {
   await ctx.sendMessage(
@@ -28,8 +22,6 @@ async function handle(ctx) {
 }`;
 
 const TEMPLATE_AI = `// Contoh command yang terhubung ke API ChatGPT (atau kompatibel OpenAI lain).
-// Ganti API_KEY dengan API key kamu sendiri.
-
 const API_KEY = 'MASUKKAN_API_KEY_DI_SINI';
 
 async function handle(ctx) {
@@ -41,99 +33,46 @@ async function handle(ctx) {
       { role: 'user', content: ctx.text },
     ],
   });
-
   await ctx.sendMessage(reply);
 }`;
 
-const TEMPLATE_WELCOME = `// Trigger command ini WAJIB diisi "@join" (bukan teks biasa).
-// Otomatis jalan tiap kali ada anggota baru masuk grup.
-// Syarat: bot harus jadi admin grup di Telegram (Add Admin), minimal
-// dengan izin "Invite Users" supaya bisa baca event anggota masuk.
-
+const TEMPLATE_WELCOME = `// Trigger WAJIB diisi "@join". Otomatis jalan tiap ada anggota baru masuk grup.
 async function handle(ctx) {
   const names = (ctx.newChatMembers || [])
     .map((u) => u.first_name || u.username || 'teman baru')
     .join(', ');
-
-  await ctx.sendMessage(
-    \`👋 Selamat datang, \${names}! Baca dulu aturan grup ya sebelum chat.\`
-  );
+  await ctx.sendMessage(\`👋 Selamat datang, \${names}! Baca dulu aturan grup ya.\`);
 }`;
 
-const TEMPLATE_MODERATION = `// Contoh command moderasi grup: /mute, /kick, /ban, /pin (balas pesan target lalu ketik command).
-// Trigger command ini contohnya diisi "/mute".
-// PENTING:
-// - Bot harus jadi admin grup di Telegram dengan izin "Restrict/Ban/Pin Members".
-// - Kode ini SELALU cek dulu apakah yang memanggil command adalah admin grup,
-//   supaya member biasa tidak bisa nge-mute/ban orang lain.
-// - Command harus dipakai dengan cara reply ke pesan orang yang mau dimoderasi.
-
+const TEMPLATE_MODERATION = `// Moderasi grup: /mute, /kick, /ban, /pin — reply ke pesan target dulu.
 async function handle(ctx) {
-  // Cegah pemakaian di luar grup
   if (ctx.chatType !== 'group' && ctx.chatType !== 'supergroup') {
-    await ctx.sendMessage('Command ini cuma bisa dipakai di dalam grup.');
-    return;
+    await ctx.sendMessage('Command ini cuma bisa dipakai di dalam grup.'); return;
   }
-
-  // Hanya admin grup yang boleh pakai command ini
   const callerIsAdmin = await ctx.isGroupAdmin(ctx.from?.id);
   if (!callerIsAdmin) {
-    await ctx.sendMessage('Cuma admin grup yang boleh pakai command ini.');
-    return;
+    await ctx.sendMessage('Cuma admin grup yang boleh pakai command ini.'); return;
   }
-
-  // User target harus didapat dari pesan yang di-reply
   const target = ctx.message?.reply_to_message?.from;
   if (!target) {
-    await ctx.sendMessage('Reply pesan orang yang mau dimoderasi, baru ketik command ini.');
-    return;
+    await ctx.sendMessage('Reply pesan orang yang mau dimoderasi, baru ketik command ini.'); return;
   }
-
-  // --- Pilih salah satu aksi sesuai kebutuhan, hapus yang lain ---
-
-  // Mute 1 jam:
   await ctx.muteUser(target.id, 60 * 60);
   await ctx.sendMessage(\`🔇 \${target.first_name} dimute selama 1 jam.\`);
-
-  // Unmute:
-  // await ctx.unmuteUser(target.id);
-
-  // Kick (boleh join lagi nanti):
-  // await ctx.kickUser(target.id);
-
-  // Ban permanen:
-  // await ctx.banUser(target.id);
-
-  // Unban:
-  // await ctx.unbanUser(target.id);
-
-  // Pin pesan yang di-reply:
-  // await ctx.pinMessage(target.message_id);
 }`;
 
-const TEMPLATE_EDIT_DELETE = `// Contoh command dengan tombol yang mengedit / menghapus pesannya sendiri.
-// Trigger command ini contohnya diisi "/menu" (untuk munculkan pesan+tombol awal),
-// lalu buat 2 command LAIN dengan trigger PERSIS SAMA dengan callback_data
-// tombolnya, misalnya "edit_ya" dan "hapus_ya" (tanpa '/' di depan).
-
+const TEMPLATE_EDIT_DELETE = `// Command dengan tombol edit/hapus pesan. Trigger: /menu
 async function handle(ctx) {
   if (ctx.callbackData === 'edit_ya') {
-    // Tombol "Edit" diklik -> ubah teks & tombol pesan yang sama (bukan kirim pesan baru)
-    await ctx.editMessageText('<b>Pesan sudah diedit ✅</b>\\nIsi barunya kayak gini.', {
+    await ctx.editMessageText('<b>Pesan sudah diedit ✅</b>', {
       buttons: [[{ text: 'Hapus pesan ini', callback_data: 'hapus_ya' }]],
     });
-    await ctx.answerCallback('Berhasil diedit!');
-    return;
+    await ctx.answerCallback('Berhasil diedit!'); return;
   }
-
   if (ctx.callbackData === 'hapus_ya') {
-    // Tombol "Hapus" diklik -> hapus pesannya
     await ctx.deleteMessage();
-    await ctx.answerCallback('Pesan dihapus.');
-    return;
+    await ctx.answerCallback('Pesan dihapus.'); return;
   }
-
-  // Belum ada callback -> ini pemanggilan awal command (mis. ketik "/menu")
   await ctx.sendMessage('Pilih aksi untuk pesan ini:', {
     buttons: [
       [{ text: '✏️ Edit pesan', callback_data: 'edit_ya' }],
@@ -143,17 +82,14 @@ async function handle(ctx) {
 }`;
 
 const TABS = [
-  { id: 'intro', label: 'Intro', icon: '▦' },
-  { id: 'commands', label: 'Commands', icon: '</>' },
+  { id: 'intro', label: 'Info' },
+  { id: 'commands', label: 'Commands' },
+  { id: 'settings', label: 'Settings' },
 ];
 
 function initials(name) {
-  return (name || '?')
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase())
-    .join('') || '?';
+  return (name || '?').split(' ').filter(Boolean).slice(0, 2)
+    .map((w) => w[0]?.toUpperCase()).join('') || '?';
 }
 
 export default function BotCard({ bot, onChange }) {
@@ -161,7 +97,6 @@ export default function BotCard({ bot, onChange }) {
   const [tab, setTab] = useState('intro');
   const [busy, setBusy] = useState(false);
 
-  // ---- Commands state ----
   const [commands, setCommands] = useState(bot.commands || []);
   const [editingId, setEditingId] = useState(null);
   const [draftCode, setDraftCode] = useState('');
@@ -171,27 +106,26 @@ export default function BotCard({ bot, onChange }) {
   const [newTrigger, setNewTrigger] = useState('');
   const [addingCommand, setAddingCommand] = useState(false);
   const [search, setSearch] = useState('');
+  const [selectedIds, setSelectedIds] = useState(() => new Set());
+  const [selectMode, setSelectMode] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
 
-  // ---- Import/export JSON state ----
   const fileInputRef = useRef(null);
   const [importing, setImporting] = useState(false);
-  const [importMsg, setImportMsg] = useState(null); // { type: 'ok' | 'error', text }
+  const [importMsg, setImportMsg] = useState(null);
 
-  // ---- Settings state (rules mode masih tersedia sebagai fallback) ----
   const [fallback, setFallback] = useState(bot.fallbackMessage || '');
   const [savingFallback, setSavingFallback] = useState(false);
   const [showToken, setShowToken] = useState(false);
 
   const isActive = bot.status === 'active';
-  const maskedToken = bot.token ? bot.token.replace(/./g, '•').slice(0, 34) : '';
+  const maskedToken = bot.token ? '•'.repeat(20) + bot.token.slice(-6) : '';
 
   useEffect(() => {
     if (!editingId) return;
-    function onKeyDown(e) {
-      if (e.key === 'Escape') closeEditor();
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
+    const onKey = (e) => { if (e.key === 'Escape') closeEditor(); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
   }, [editingId]);
 
   function openEditor(cmd) {
@@ -250,7 +184,7 @@ export default function BotCard({ bot, onChange }) {
         setDraftSaved(true);
         onChange?.();
       }
-    } catch (e) {
+    } catch {
       setDraftError('Tidak bisa menghubungi server.');
     } finally {
       setDraftSaving(false);
@@ -263,9 +197,50 @@ export default function BotCard({ bot, onChange }) {
     const data = await res.json();
     if (res.ok) {
       setCommands(data.commands);
+      setSelectedIds((prev) => { const n = new Set(prev); n.delete(cmdId); return n; });
       if (editingId === cmdId) closeEditor();
       onChange?.();
     }
+  }
+
+  function toggleSelectMode() { setSelectMode((s) => !s); setSelectedIds(new Set()); }
+  function toggleSelected(cmdId) {
+    setSelectedIds((prev) => { const n = new Set(prev); n.has(cmdId) ? n.delete(cmdId) : n.add(cmdId); return n; });
+  }
+  function selectAllFiltered() { setSelectedIds(new Set(filteredCommands.map((c) => c.id))); }
+  function clearSelection() { setSelectedIds(new Set()); }
+
+  async function deleteCommandsByIds(ids) {
+    if (!ids.length) return;
+    setBulkDeleting(true);
+    try {
+      const results = await Promise.all(
+        ids.map((id) => fetch(`/api/bots/${bot.id}/commands/${id}`, { method: 'DELETE' }).then((r) => r.ok ? r.json() : null))
+      );
+      const last = results.filter(Boolean).pop();
+      if (last) { setCommands(last.commands); }
+      else { setCommands((prev) => prev.filter((c) => !ids.includes(c.id))); }
+      setSelectedIds(new Set());
+      if (editingId && ids.includes(editingId)) closeEditor();
+      onChange?.();
+    } finally {
+      setBulkDeleting(false);
+    }
+  }
+
+  async function deleteSelected() {
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    if (!confirm(`Hapus ${ids.length} command yang dipilih?`)) return;
+    await deleteCommandsByIds(ids);
+    setSelectMode(false);
+  }
+
+  async function deleteAllCommands() {
+    if (!commands.length) return;
+    if (!confirm(`Hapus SEMUA ${commands.length} command? Tidak bisa dibatalkan.`)) return;
+    await deleteCommandsByIds(commands.map((c) => c.id));
+    setSelectMode(false);
   }
 
   function loadTemplate(tpl, defaultTrigger = '/start') {
@@ -274,10 +249,9 @@ export default function BotCard({ bot, onChange }) {
     addCommand(tpl, trigger);
   }
 
-  // ---- Export: unduh semua command bot ini sebagai file .json ----
   function exportCommands() {
     const payload = {
-      exportedFrom: 'menara-bot',
+      exportedFrom: 'sanzu-cloud',
       botUsername: bot.username,
       exportedAt: new Date().toISOString(),
       items: commands.map((c) => ({ trigger: c.trigger, code: c.code || '' })),
@@ -293,71 +267,47 @@ export default function BotCard({ bot, onChange }) {
     URL.revokeObjectURL(url);
   }
 
-  // ---- Import: pilih file .json, kirim ke server buat divalidasi & disimpan ----
-  function pickImportFile() {
-    setImportMsg(null);
-    fileInputRef.current?.click();
-  }
+  function pickImportFile() { setImportMsg(null); fileInputRef.current?.click(); }
 
   async function handleImportFile(e) {
     const file = e.target.files?.[0];
-    e.target.value = ''; // reset supaya bisa pilih file sama lagi nanti
+    e.target.value = '';
     if (!file) return;
-
     if (!file.name.toLowerCase().endsWith('.json') && file.type !== 'application/json') {
-      setImportMsg({ type: 'error', text: 'File harus berformat .json.' });
-      return;
+      setImportMsg({ type: 'error', text: 'File harus berformat .json.' }); return;
     }
     if (file.size > 2 * 1024 * 1024) {
-      setImportMsg({ type: 'error', text: 'File terlalu besar (maksimal 2MB).' });
-      return;
+      setImportMsg({ type: 'error', text: 'File terlalu besar (maks 2MB).' }); return;
     }
-
     setImporting(true);
     setImportMsg(null);
     try {
       const text = await file.text();
       let parsed;
-      try {
-        parsed = JSON.parse(text);
-      } catch {
-        setImportMsg({ type: 'error', text: 'File bukan JSON yang valid.' });
-        return;
+      try { parsed = JSON.parse(text); } catch {
+        setImportMsg({ type: 'error', text: 'File bukan JSON yang valid.' }); return;
       }
-
       const items = Array.isArray(parsed) ? parsed : parsed.items;
       if (!Array.isArray(items)) {
-        setImportMsg({
-          type: 'error',
-          text: 'Format tidak dikenali. File harus berisi array command atau { "items": [...] }.',
-        });
-        return;
+        setImportMsg({ type: 'error', text: 'Format tidak dikenali.' }); return;
       }
-
       const res = await fetch(`/api/bots/${bot.id}/commands/import`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ items }),
       });
       const data = await res.json();
-
-      if (!res.ok) {
-        setImportMsg({ type: 'error', text: data.error || 'Gagal mengimpor command.' });
-        return;
-      }
-
+      if (!res.ok) { setImportMsg({ type: 'error', text: data.error || 'Gagal mengimpor command.' }); return; }
       setCommands(data.commands);
       onChange?.();
-
       const skipped = data.rejected?.length || 0;
       setImportMsg({
         type: 'ok',
         text: skipped
-          ? `${data.importedCount} command diimpor, ${skipped} dilewati (lihat konsol untuk detail).`
+          ? `${data.importedCount} diimpor, ${skipped} dilewati.`
           : `${data.importedCount} command berhasil diimpor.`,
       });
-      if (skipped) console.warn('Command dilewati saat import:', data.rejected);
-    } catch (err) {
+    } catch {
       setImportMsg({ type: 'error', text: 'Tidak bisa menghubungi server.' });
     } finally {
       setImporting(false);
@@ -399,170 +349,148 @@ export default function BotCard({ bot, onChange }) {
     : commands;
 
   return (
-    <div className="row">
-      <div className="row-head">
-        <button className="row-head-main" onClick={() => setOpen((o) => !o)}>
+    <div className={`card ${open ? 'card-open' : ''}`}>
+      {/* ── Row header ── */}
+      <div className="card-head">
+        <button className="head-main" onClick={() => setOpen((o) => !o)}>
           <span className="avatar">{initials(bot.firstName || bot.username)}</span>
-          <span className="row-info">
-            <span className="row-name">{bot.firstName || bot.username}</span>
-            <span className="row-username">@{bot.username}</span>
+          <span className="head-info">
+            <span className="head-name">{bot.firstName || bot.username}</span>
+            <span className="head-username">@{bot.username}</span>
           </span>
-          <span className={`status-pill ${isActive ? 'ok' : 'off'}`}>
-            {isActive ? 'Working' : 'Stopped'}
+          <span className={`pill ${isActive ? 'pill-ok' : 'pill-off'}`}>
+            <span className="pill-dot" />
+            {isActive ? 'Aktif' : 'Jeda'}
           </span>
         </button>
-        <button
-          className={`gear-btn ${tab === 'settings' && open ? 'active' : ''}`}
-          onClick={() => {
-            setTab('settings');
-            setOpen(true);
-          }}
-          aria-label="Pengaturan bot"
-        >
-          ⚙
-        </button>
-        <button className="manage-btn" onClick={() => setOpen((o) => !o)}>
-          {open ? 'Close' : 'Manage'}
-        </button>
+
+        <div className="head-actions">
+          <span className="cmd-count">{commands.length} cmd</span>
+          <button className="action-btn" onClick={() => { setTab('settings'); setOpen(true); }} title="Settings">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
+              <path d="M8 10a2 2 0 100-4 2 2 0 000 4z" stroke="currentColor" strokeWidth="1.5"/>
+              <path d="M13.3 6.3l-.9-.5a5 5 0 000-1.6l.9-.5a1 1 0 00.4-1.4l-1-1.7a1 1 0 00-1.4-.4l-.9.5A5 5 0 008.7 1V0H7.3v1a5 5 0 00-1.7.7l-.9-.5a1 1 0 00-1.4.4L2.3 3.3a1 1 0 00.4 1.4l.9.5a5 5 0 000 1.6l-.9.5a1 1 0 00-.4 1.4l1 1.7a1 1 0 001.4.4l.9-.5A5 5 0 007.3 11V12h1.4v-1a5 5 0 001.7-.7l.9.5a1 1 0 001.4-.4l1-1.7a1 1 0 00-.4-1.4z" stroke="currentColor" strokeWidth="1.2"/>
+            </svg>
+          </button>
+          <button className="expand-btn" onClick={() => setOpen((o) => !o)}>
+            {open ? 'Tutup' : 'Kelola'}
+          </button>
+        </div>
       </div>
 
+      {/* ── Expanded panel ── */}
       {open && (
-        <div className="panel">
+        <div className="card-body">
           <div className="tabbar">
             {TABS.map((t) => (
               <button
                 key={t.id}
-                className={`tab ${tab === t.id ? 'active' : ''}`}
+                className={`tab ${tab === t.id ? 'tab-active' : ''}`}
                 onClick={() => setTab(t.id)}
               >
-                <span className="tab-icon">{t.icon}</span> {t.label}
+                {t.label}
               </button>
             ))}
-            <button
-              className={`tab tab-settings ${tab === 'settings' ? 'active' : ''}`}
-              onClick={() => setTab('settings')}
-              aria-label="Settings"
-            >
-              <span className="tab-icon">⚙</span>
-            </button>
           </div>
 
+          {/* ── Info tab ── */}
           {tab === 'intro' && (
-            <div className="tab-body">
-              <div className="intro-card">
-                <div className="intro-top">
-                  <span className="avatar avatar-lg">{initials(bot.firstName || bot.username)}</span>
-                  <div>
-                    <p className="intro-name">{bot.firstName || bot.username}</p>
-                    <span className={`status-pill ${isActive ? 'ok' : 'off'}`}>
-                      {isActive ? 'Active' : 'Stopped'}
-                    </span>
-                  </div>
+            <div className="tab-content">
+              <div className="info-grid">
+                <div className="info-stat">
+                  <span className="info-stat-n">{bot.userCount || 1}</span>
+                  <span className="info-stat-l">Users</span>
                 </div>
-                <p className="intro-username">@{bot.username}</p>
-                <p className="intro-id">{bot.id}</p>
+                <div className="info-stat">
+                  <span className="info-stat-n">{commands.length}</span>
+                  <span className="info-stat-l">Commands</span>
+                </div>
+                <div className="info-stat">
+                  <span className="info-stat-n">{bot.messageCount || 0}</span>
+                  <span className="info-stat-l">Pesan</span>
+                </div>
+              </div>
 
+              <div className="info-status">
+                <span className={`pill ${isActive ? 'pill-ok' : 'pill-off'}`}>
+                  <span className="pill-dot" />
+                  {isActive ? 'Online & membalas' : 'Dijeda'}
+                </span>
                 <button
                   onClick={toggleStatus}
                   disabled={busy}
-                  className={`stop-btn ${isActive ? 'danger' : 'ok'}`}
+                  className={`toggle-btn ${isActive ? 'toggle-stop' : 'toggle-start'}`}
                 >
-                  <span className="stop-dot" /> {isActive ? 'Stop Bot' : 'Start Bot'}
+                  {isActive ? 'Stop Bot' : 'Start Bot'}
                 </button>
-              </div>
-
-              <p className="section-label">Overview</p>
-              <div className="stat-grid">
-                <div className="stat-card">
-                  <span className="stat-icon">👤</span>
-                  <p className="stat-label">Users</p>
-                  <p className="stat-value">{bot.userCount || 1}</p>
-                </div>
-                <div className="stat-card">
-                  <span className="stat-icon">✓</span>
-                  <p className="stat-label">Commands</p>
-                  <p className="stat-value">{commands.length}</p>
-                </div>
-                <div className="stat-card wide">
-                  <span className="stat-icon">🕒</span>
-                  <p className="stat-label">Messages diproses</p>
-                  <p className="stat-value">{bot.messageCount || 0}</p>
-                </div>
-              </div>
-
-              <p className="section-label">Status</p>
-              <div className="status-block">
-                <span className={`status-pill ${isActive ? 'ok' : 'off'}`}>
-                  {isActive ? 'Active' : 'Stopped'}
-                </span>
-                <span className="status-text">
-                  {isActive ? 'Online & responding' : 'Bot dijeda, tidak membalas pesan'}
-                </span>
               </div>
             </div>
           )}
 
+          {/* ── Commands tab ── */}
           {tab === 'commands' && (
-            <div className="tab-body">
-              <div className="template-row">
-                <span className="template-label">Template:</span>
-                <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_BASIC, '/start')}>
-                  Dasar (teks + tombol)
-                </button>
-                <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_AI, '/ai')}>
-                  Terhubung AI
-                </button>
-                <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_WELCOME, '@join')}>
-                  Welcome Grup
-                </button>
-                <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_MODERATION, '/mute')}>
-                  Moderasi (mute/kick/ban/pin)
-                </button>
-                <button className="btn-add" onClick={() => loadTemplate(TEMPLATE_EDIT_DELETE, '/menu')}>
-                  Edit/Hapus Pesan via Tombol
-                </button>
-              </div>
-              <p className="template-hint" style={{ opacity: 0.7, fontSize: '0.85em', margin: '4px 0 12px' }}>
-                💡 Template "Edit/Hapus Pesan via Tombol" butuh 3 command: satu untuk trigger
-                utama (mis. <code>/menu</code>), dan dua lagi dengan trigger persis sama dengan
-                callback_data tombolnya (<code>edit_ya</code> dan <code>hapus_ya</code>) —
-                semuanya bisa pakai kode yang sama, karena kode itu mengecek{' '}
-                <code>ctx.callbackData</code> untuk tahu tombol mana yang diklik.
-              </p>
-
-              <div className="io-row">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="application/json,.json"
-                  onChange={handleImportFile}
-                  style={{ display: 'none' }}
-                />
-                <button className="io-btn" onClick={pickImportFile} disabled={importing}>
-                  <span className="io-icon">⇧</span> {importing ? 'Mengimpor…' : 'Import JSON'}
-                </button>
-                <button className="io-btn" onClick={exportCommands} disabled={commands.length === 0}>
-                  <span className="io-icon">⇩</span> Export JSON
-                </button>
-                <span className="io-count">{commands.length} command</span>
+            <div className="tab-content">
+              {/* Templates */}
+              <div className="section-block">
+                <p className="section-title">Template Cepat</p>
+                <div className="template-chips">
+                  <button className="chip" onClick={() => loadTemplate(TEMPLATE_BASIC, '/start')}>Teks + Tombol</button>
+                  <button className="chip" onClick={() => loadTemplate(TEMPLATE_AI, '/ai')}>Sambung AI</button>
+                  <button className="chip" onClick={() => loadTemplate(TEMPLATE_WELCOME, '@join')}>Welcome Grup</button>
+                  <button className="chip" onClick={() => loadTemplate(TEMPLATE_MODERATION, '/mute')}>Moderasi</button>
+                  <button className="chip" onClick={() => loadTemplate(TEMPLATE_EDIT_DELETE, '/menu')}>Edit/Hapus Pesan</button>
+                </div>
               </div>
 
-              {importMsg && (
-                <p className={importMsg.type === 'error' ? 'code-error' : 'code-ok'}>
-                  {importMsg.text}
-                </p>
-              )}
-
+              {/* Toolbar */}
               <div className="cmd-toolbar">
-                <div className="search-box">
-                  <span className="search-icon">⌕</span>
+                <div className="search-wrap">
+                  <svg className="search-icon" width="12" height="12" viewBox="0 0 16 16" fill="none">
+                    <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.5"/>
+                    <path d="M10 10l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
+                  </svg>
                   <input
-                    placeholder="Search…"
+                    className="search-input"
+                    placeholder="Cari command…"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
                 </div>
-                <div className="add-command-row">
+
+                <div className="toolbar-right">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="application/json,.json"
+                    onChange={handleImportFile}
+                    style={{ display: 'none' }}
+                  />
+                  <button className="tool-btn" onClick={pickImportFile} disabled={importing} title="Import JSON">
+                    ↑ Import
+                  </button>
+                  <button className="tool-btn" onClick={exportCommands} disabled={!commands.length} title="Export JSON">
+                    ↓ Export
+                  </button>
+                  <button
+                    className={`tool-btn ${selectMode ? 'tool-btn-active' : ''}`}
+                    onClick={toggleSelectMode}
+                    disabled={!commands.length}
+                  >
+                    ☑ Pilih
+                  </button>
+                  <button
+                    className="tool-btn tool-btn-danger"
+                    onClick={deleteAllCommands}
+                    disabled={!commands.length || bulkDeleting}
+                  >
+                    Hapus Semua
+                  </button>
+                </div>
+              </div>
+
+              {/* Add command row */}
+              {!selectMode && (
+                <div className="add-row">
                   <input
                     className="trigger-input"
                     placeholder="/start, /play, help_menu…"
@@ -571,38 +499,69 @@ export default function BotCard({ bot, onChange }) {
                     onKeyDown={(e) => e.key === 'Enter' && addCommand()}
                   />
                   <button
-                    className="new-cmd-btn"
+                    className="add-btn"
                     onClick={() => addCommand()}
                     disabled={addingCommand || !newTrigger.trim()}
                   >
-                    + New
+                    + Buat Command
                   </button>
                 </div>
-              </div>
+              )}
 
+              {selectMode && (
+                <div className="bulk-bar">
+                  <span className="bulk-info">{selectedIds.size} dipilih</span>
+                  <button className="bulk-link" onClick={selectAllFiltered}>Semua ({filteredCommands.length})</button>
+                  <button className="bulk-link" onClick={clearSelection} disabled={!selectedIds.size}>Kosongkan</button>
+                  <button className="bulk-delete" onClick={deleteSelected} disabled={!selectedIds.size || bulkDeleting}>
+                    {bulkDeleting ? 'Menghapus…' : `Hapus (${selectedIds.size})`}
+                  </button>
+                </div>
+              )}
+
+              {importMsg && (
+                <div className={`msg-banner ${importMsg.type}`}>{importMsg.text}</div>
+              )}
+
+              {/* Command list */}
               {filteredCommands.length === 0 && (
-                <p className="empty-rules">
+                <p className="empty-msg">
                   {commands.length === 0
-                    ? 'Belum ada command. Tambahkan trigger di atas untuk membuat command pertama.'
-                    : 'Tidak ada command yang cocok dengan pencarian.'}
+                    ? 'Belum ada command. Pakai template di atas atau tulis trigger sendiri.'
+                    : 'Tidak ada command yang cocok.'}
                 </p>
               )}
 
-              <div className="command-list">
+              <div className="cmd-grid">
                 {filteredCommands.map((cmd) => (
-                  <div className="command-item" key={cmd.id}>
-                    <div className="command-trigger">{cmd.trigger}</div>
-                    <div className="command-row">
+                  <div
+                    key={cmd.id}
+                    className={`cmd-item ${selectMode ? 'selectable' : ''} ${selectedIds.has(cmd.id) ? 'selected' : ''}`}
+                    onClick={selectMode ? () => toggleSelected(cmd.id) : undefined}
+                  >
+                    {selectMode && (
+                      <input
+                        type="checkbox"
+                        className="cmd-check"
+                        checked={selectedIds.has(cmd.id)}
+                        onChange={() => toggleSelected(cmd.id)}
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    )}
+                    <code className="cmd-trigger">{cmd.trigger}</code>
+                    <div className="cmd-btns">
                       <button
-                        className="btn-edit-code"
-                        onClick={() => openEditor(cmd)}
+                        className="cmd-edit"
+                        onClick={(e) => { e.stopPropagation(); if (!selectMode) openEditor(cmd); }}
+                        disabled={selectMode}
                       >
-                        <span className="btn-edit-code-icon">{'</>'}</span> Edit JS
+                        {'</>'} Edit JS
                       </button>
                       <button
-                        className="btn-icon btn-icon-danger"
-                        onClick={() => removeCommand(cmd.id)}
-                        aria-label="Hapus command"
+                        className="cmd-del"
+                        onClick={(e) => { e.stopPropagation(); removeCommand(cmd.id); }}
+                        aria-label="Hapus"
+                        disabled={selectMode}
                       >
                         🗑
                       </button>
@@ -611,122 +570,53 @@ export default function BotCard({ bot, onChange }) {
                 ))}
               </div>
 
-              {editingId && (
-                <div className="editor-overlay" onClick={closeEditor}>
-                  <div className="editor-modal" onClick={(e) => e.stopPropagation()}>
-                    <div className="editor-modal-head">
-                      <div className="editor-modal-title">
-                        <span className="editor-modal-icon">{'</>'}</span>
-                        <div>
-                          <p className="editor-modal-trigger">
-                            {commands.find((c) => c.id === editingId)?.trigger}
-                          </p>
-                          <p className="editor-modal-sub">Kode JavaScript command</p>
-                        </div>
-                      </div>
-                      <button className="editor-close" onClick={closeEditor} aria-label="Tutup editor">✕</button>
-                    </div>
-
-                    <div className="editor-modal-body">
-                      <textarea
-                        className="code-editor"
-                        value={draftCode}
-                        onChange={(e) => {
-                          setDraftCode(e.target.value);
-                          setDraftSaved(false);
-                        }}
-                        rows={16}
-                        spellCheck={false}
-                        placeholder="async function handle(ctx) {&#10;  await ctx.sendMessage('Halo!');&#10;}"
-                        autoFocus
-                      />
-
-                      <p className="code-hint">
-                        Wajib mendefinisikan <code>async function handle(ctx)</code>. Tersedia:{' '}
-                        <code>ctx.text</code>, <code>ctx.callbackData</code>, <code>ctx.sendMessage()</code>,{' '}
-                        <code>ctx.sendPhoto()</code>, <code>ctx.editMessageText()</code>,{' '}
-                        <code>ctx.editMessageCaption()</code>, <code>ctx.editMessageReplyMarkup()</code>,{' '}
-                        <code>ctx.deleteMessage()</code>, <code>ctx.answerCallback()</code>,{' '}
-                        <code>ctx.callAI()</code>, <code>ctx.fetchJSON()</code>. Untuk grup:{' '}
-                        <code>ctx.chatType</code>, <code>ctx.newChatMembers</code>,{' '}
-                        <code>ctx.isGroupAdmin()</code>, <code>ctx.muteUser()</code>,{' '}
-                        <code>ctx.unmuteUser()</code>, <code>ctx.kickUser()</code>,{' '}
-                        <code>ctx.banUser()</code>, <code>ctx.unbanUser()</code>,{' '}
-                        <code>ctx.pinMessage()</code>, <code>ctx.unpinMessage()</code>. Trigger event khusus:{' '}
-                        <code>@join</code> (anggota baru), <code>@leave</code> (anggota keluar). Semua teks/caption
-                        otomatis diformat pakai <code>HTML</code> Telegram (<code>&lt;b&gt;</code>,{' '}
-                        <code>&lt;i&gt;</code>, <code>&lt;u&gt;</code>, <code>&lt;s&gt;</code>,{' '}
-                        <code>&lt;code&gt;</code>, <code>&lt;pre&gt;</code>, <code>&lt;a href&gt;</code>,{' '}
-                        <code>&lt;blockquote&gt;</code>, <code>&lt;tg-spoiler&gt;</code>) — override dengan{' '}
-                        <code>{'{ parseMode: null }'}</code> kalau mau teks polos.
-                      </p>
-
-                      {draftError && <p className="code-error">{draftError}</p>}
-                      {draftSaved && <p className="code-ok">Kode tersimpan dan aktif.</p>}
-                    </div>
-
-                    <div className="editor-modal-foot">
-                      <button className="btn-cancel" onClick={closeEditor}>Batal</button>
-                      <button
-                        onClick={() => saveCommandCode(editingId)}
-                        disabled={draftSaving}
-                        className="btn-save"
-                      >
-                        {draftSaving ? 'Menyimpan…' : 'Simpan & Aktifkan'}
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              <div className="editor-field" style={{ marginTop: 16 }}>
-                <label>Balasan default (jika tak ada command yang cocok)</label>
+              {/* Fallback */}
+              <div className="section-block" style={{ marginTop: 20 }}>
+                <label className="section-title" htmlFor="fallback-ta">Balasan default (jika tak ada command yang cocok)</label>
                 <textarea
+                  id="fallback-ta"
+                  className="fallback-ta"
                   value={fallback}
                   onChange={(e) => setFallback(e.target.value)}
                   rows={2}
                   onBlur={saveFallback}
+                  placeholder="Kosong = tidak membalas"
                 />
                 {savingFallback && <span className="saving-hint">Menyimpan…</span>}
               </div>
             </div>
           )}
 
+          {/* ── Settings tab ── */}
           {tab === 'settings' && (
-            <div className="tab-body">
-              <div className="settings-card">
-                <p className="settings-label">Bot ID</p>
+            <div className="tab-content">
+              <div className="settings-rows">
                 <div className="settings-row">
-                  <span className="settings-value">{bot.id}</span>
+                  <span className="settings-key">Bot ID</span>
+                  <span className="settings-val">{bot.id}</span>
                 </div>
-              </div>
-
-              <div className="settings-card">
-                <p className="settings-label">Bot Token</p>
                 <div className="settings-row">
-                  <span className="settings-value mono">
+                  <span className="settings-key">Bot Token</span>
+                  <span className="settings-val mono">
                     {showToken ? bot.token : maskedToken}
                   </span>
                   <button className="eye-btn" onClick={() => setShowToken((s) => !s)}>
                     {showToken ? '🙈' : '👁'}
                   </button>
                 </div>
-              </div>
-
-              <div className="settings-card">
-                <p className="settings-label">Statistik</p>
                 <div className="settings-row">
-                  <span className="settings-value">{bot.messageCount || 0} pesan diproses</span>
+                  <span className="settings-key">Pesan diproses</span>
+                  <span className="settings-val">{bot.messageCount || 0}</span>
                 </div>
               </div>
 
-              <div className="settings-card danger-zone">
-                <p className="settings-label danger-label">Danger Zone</p>
+              <div className="danger-section">
+                <p className="danger-title">Danger Zone</p>
                 <p className="danger-desc">
-                  Menghapus bot akan mencabut webhook dan bot berhenti membalas pesan secara permanen.
+                  Menghapus bot akan mencabut webhook secara permanen. Bot berhenti membalas pesan.
                 </p>
                 <button onClick={removeBot} disabled={busy} className="delete-btn">
-                  Hapus Bot
+                  {busy ? 'Menghapus…' : 'Hapus Bot Ini'}
                 </button>
               </div>
             </div>
@@ -734,23 +624,71 @@ export default function BotCard({ bot, onChange }) {
         </div>
       )}
 
+      {/* ── JS Editor modal ── */}
+      {editingId && (
+        <div className="overlay" onClick={closeEditor}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-head">
+              <div className="modal-title">
+                <span className="modal-icon">{'</>'}</span>
+                <div>
+                  <p className="modal-trigger">{commands.find((c) => c.id === editingId)?.trigger}</p>
+                  <p className="modal-sub">JavaScript Command</p>
+                </div>
+              </div>
+              <button className="modal-close" onClick={closeEditor}>✕</button>
+            </div>
+
+            <div className="modal-body">
+              <textarea
+                className="code-editor"
+                value={draftCode}
+                onChange={(e) => { setDraftCode(e.target.value); setDraftSaved(false); }}
+                rows={18}
+                spellCheck={false}
+                placeholder={"async function handle(ctx) {\n  await ctx.sendMessage('Halo!');\n}"}
+                autoFocus
+              />
+              {draftError && <div className="msg-banner error">{draftError}</div>}
+              {draftSaved && <div className="msg-banner ok">✓ Kode tersimpan dan aktif.</div>}
+            </div>
+
+            <div className="modal-foot">
+              <button className="modal-cancel" onClick={closeEditor}>Batal</button>
+              <button
+                className="modal-save"
+                onClick={() => saveCommandCode(editingId)}
+                disabled={draftSaving}
+              >
+                {draftSaving ? 'Menyimpan…' : 'Simpan & Aktifkan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <style jsx>{`
-        .row {
-          background: var(--bru-white);
-          border: var(--bru-border);
-          box-shadow: var(--bru-shadow-sm);
-          margin-bottom: 4px;
+        /* ── Card shell ── */
+        .card {
+          background: var(--panel);
+          border: 1px solid var(--border-solid);
+          border-radius: 14px;
+          overflow: hidden;
+          transition: border-color 0.2s;
+        }
+        .card-open {
+          border-color: rgba(124, 58, 237, 0.35);
         }
 
-        .row-head {
-          width: 100%;
+        /* ── Header row ── */
+        .card-head {
           display: flex;
           align-items: center;
-          gap: 10px;
-          padding: 16px 18px;
+          gap: 12px;
+          padding: 16px 20px;
         }
 
-        .row-head-main {
+        .head-main {
           flex: 1;
           min-width: 0;
           display: flex;
@@ -764,850 +702,734 @@ export default function BotCard({ bot, onChange }) {
         }
 
         .avatar {
-          width: 42px;
-          height: 42px;
-          border-radius: 0;
-          background: var(--bru-yellow);
-          color: var(--bru-ink);
-          border: var(--bru-border);
-          font-family: var(--display);
-          font-weight: 800;
-          font-size: 14px;
+          width: 38px;
+          height: 38px;
+          border-radius: 10px;
+          background: var(--signal-dim);
+          color: var(--signal-2);
+          font-family: var(--mono);
+          font-size: 13px;
+          font-weight: 700;
           display: flex;
           align-items: center;
           justify-content: center;
           flex-shrink: 0;
+          letter-spacing: -0.02em;
         }
 
-        .avatar-lg {
-          width: 54px;
-          height: 54px;
-          font-size: 18px;
-        }
-
-        .row-info {
-          flex: 1;
-          min-width: 0;
+        .head-info {
           display: flex;
           flex-direction: column;
+          gap: 2px;
+          min-width: 0;
         }
 
-        .row-name {
-          font-family: var(--display);
-          font-weight: 800;
+        .head-name {
           font-size: 14px;
-          color: var(--bru-ink);
+          font-weight: 600;
+          color: var(--text);
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
 
-        .row-username {
-          font-size: 12px;
-          color: #555;
+        .head-username {
+          font-size: 11px;
+          color: var(--text-faint);
           font-family: var(--mono);
-          font-weight: 600;
         }
 
-        .status-pill {
-          font-size: 10px;
-          font-family: var(--mono);
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
-          padding: 5px 10px;
-          border: 2px solid var(--bru-ink);
-          flex-shrink: 0;
+        /* Pills */
+        .pill {
           display: inline-flex;
           align-items: center;
           gap: 5px;
+          font-size: 11px;
+          font-weight: 600;
+          padding: 4px 10px;
+          border-radius: 100px;
+          white-space: nowrap;
         }
-
-        .status-pill::before {
-          content: '';
+        .pill-ok {
+          background: var(--ok-dim);
+          color: var(--ok);
+        }
+        .pill-off {
+          background: var(--panel-raised);
+          color: var(--text-faint);
+        }
+        .pill-dot {
           width: 6px;
           height: 6px;
           border-radius: 50%;
           background: currentColor;
+          animation: blink 2s ease-in-out infinite;
+        }
+        .pill-off .pill-dot { animation: none; opacity: 0.4; }
+        @keyframes blink {
+          0%, 100% { opacity: 1; }
+          50% { opacity: 0.4; }
         }
 
-        .status-pill.ok {
-          background: var(--bru-green);
-          color: var(--bru-ink);
+        /* Head actions */
+        .head-actions {
+          display: flex;
+          align-items: center;
+          gap: 8px;
+          flex-shrink: 0;
         }
 
-        .status-pill.off {
-          background: var(--bru-bg);
-          color: #666;
+        .cmd-count {
+          font-size: 11px;
+          color: var(--text-faint);
+          font-family: var(--mono);
         }
 
-        .manage-btn {
-          background: var(--bru-ink);
-          color: var(--bru-bg);
+        .action-btn {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          border: 1px solid var(--border-solid);
+          background: var(--panel-raised);
+          color: var(--text-dim);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          cursor: pointer;
+          transition: background 0.15s, color 0.15s;
+        }
+        .action-btn:hover { background: var(--signal-dim); color: var(--signal-2); }
+
+        .expand-btn {
+          background: var(--panel-raised);
+          border: 1px solid var(--border-solid);
+          color: var(--text-dim);
           font-size: 12px;
-          font-weight: 800;
-          padding: 8px 16px;
-          border: var(--bru-border);
-          flex-shrink: 0;
+          font-weight: 600;
+          padding: 6px 14px;
+          border-radius: 8px;
           cursor: pointer;
+          transition: background 0.15s, color 0.15s;
         }
+        .expand-btn:hover { background: var(--signal-dim); color: var(--signal-2); border-color: var(--signal-dim); }
 
-        .gear-btn {
-          flex-shrink: 0;
-          width: 36px;
-          height: 36px;
-          border: var(--bru-border);
-          background: var(--bru-white);
-          color: var(--bru-ink);
-          font-size: 16px;
-          cursor: pointer;
-          transition: transform 0.15s ease, background 0.15s ease;
-        }
-
-        .gear-btn:hover {
-          background: var(--bru-yellow);
-          transform: rotate(35deg);
-        }
-
-        .gear-btn.active {
-          background: var(--bru-yellow);
-          box-shadow: var(--bru-shadow-sm);
-        }
-
-        .tab-settings {
-          margin-left: auto;
-          flex: 0 0 auto;
-          padding: 10px 14px;
-        }
-
-        .panel {
-          border-top: var(--bru-border);
-          padding: 18px;
+        /* ── Card body ── */
+        .card-body {
+          border-top: 1px solid var(--border-solid);
         }
 
         .tabbar {
           display: flex;
-          gap: 8px;
-          overflow-x: auto;
-          background: var(--bru-bg);
-          padding: 6px;
-          border: var(--bru-border);
-          margin-bottom: 18px;
+          border-bottom: 1px solid var(--border-solid);
+          padding: 0 20px;
         }
 
         .tab {
-          flex-shrink: 0;
-          background: transparent;
-          border: none;
-          color: #555;
-          padding: 9px 16px;
-          font-size: 12px;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
-          cursor: pointer;
-          white-space: nowrap;
-          transition: background 0.15s ease, color 0.15s ease;
-        }
-
-        .tab-icon {
-          font-family: var(--mono);
-          margin-right: 3px;
-        }
-
-        .tab.active {
-          color: var(--bru-ink);
-          background: var(--bru-yellow);
-          box-shadow: var(--bru-shadow-sm);
-        }
-
-        .tab-body {
-          display: flex;
-          flex-direction: column;
-          gap: 14px;
-        }
-
-        .intro-card {
-          background: var(--bru-bg);
-          border: var(--bru-border);
-          padding: 20px;
-        }
-
-        .intro-top {
-          display: flex;
-          align-items: center;
-          gap: 14px;
-          margin-bottom: 12px;
-        }
-
-        .intro-name {
-          font-family: var(--display);
-          font-weight: 800;
-          font-size: 17px;
-          margin: 0 0 8px;
-        }
-
-        .intro-username {
-          color: #555;
-          font-family: var(--mono);
-          font-weight: 700;
-          font-size: 13px;
-          margin: 0;
-        }
-
-        .intro-id {
-          color: #888;
-          font-family: var(--mono);
-          font-size: 12px;
-          margin: 2px 0 16px;
-        }
-
-        .stop-btn {
-          width: 100%;
-          border: var(--bru-border);
-          padding: 13px;
-          font-weight: 800;
-          font-size: 13px;
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
-          cursor: pointer;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 8px;
-          box-shadow: var(--bru-shadow-sm);
-          transition: transform 0.12s ease, box-shadow 0.12s ease;
-        }
-
-        .stop-btn.danger {
-          background: var(--bru-pink);
-          color: var(--bru-white);
-        }
-
-        .stop-btn.ok {
-          background: var(--bru-green);
-          color: var(--bru-ink);
-        }
-
-        .stop-btn:hover:not(:disabled) {
-          transform: translate(-2px, -2px);
-          box-shadow: 6px 6px 0 var(--bru-ink);
-        }
-
-        .stop-btn:active:not(:disabled) {
-          transform: translate(0, 0);
-          box-shadow: 2px 2px 0 var(--bru-ink);
-        }
-
-        .stop-dot {
-          width: 8px;
-          height: 8px;
-          background: currentColor;
-        }
-
-        .section-label {
-          font-size: 12px;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          color: var(--bru-ink);
-          margin: 6px 0 0;
-        }
-
-        .stat-grid {
-          display: grid;
-          grid-template-columns: 1fr 1fr;
-          gap: 10px;
-        }
-
-        .stat-card {
-          background: var(--bru-bg);
-          border: var(--bru-border);
-          padding: 14px;
-        }
-
-        .stat-card.wide {
-          grid-column: 1 / -1;
-        }
-
-        .stat-icon {
-          font-size: 15px;
-        }
-
-        .stat-label {
-          font-size: 11px;
-          font-weight: 700;
-          color: #666;
-          margin: 8px 0 2px;
-        }
-
-        .stat-value {
-          font-family: var(--display);
-          font-size: 22px;
-          font-weight: 800;
-          margin: 0;
-        }
-
-        .status-block {
-          background: var(--bru-bg);
-          border: var(--bru-border);
-          padding: 14px;
-          display: flex;
-          align-items: center;
-          gap: 10px;
-        }
-
-        .status-text {
           font-size: 12px;
           font-weight: 600;
-          color: #444;
+          color: var(--text-faint);
+          background: none;
+          border: none;
+          border-bottom: 2px solid transparent;
+          padding: 12px 14px;
+          cursor: pointer;
+          transition: color 0.15s;
+          margin-bottom: -1px;
+        }
+        .tab:hover { color: var(--text-dim); }
+        .tab-active {
+          color: var(--signal-2);
+          border-bottom-color: var(--signal);
         }
 
-        .template-row {
+        .tab-content {
+          padding: 20px;
+          display: flex;
+          flex-direction: column;
+          gap: 16px;
+        }
+
+        /* ── Info tab ── */
+        .info-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 1px;
+          background: var(--border-solid);
+          border: 1px solid var(--border-solid);
+          border-radius: 10px;
+          overflow: hidden;
+        }
+
+        .info-stat {
+          background: var(--panel-raised);
+          padding: 14px 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 3px;
+        }
+
+        .info-stat-n {
+          font-family: var(--mono);
+          font-size: 22px;
+          font-weight: 700;
+          line-height: 1;
+        }
+
+        .info-stat-l {
+          font-size: 10px;
+          color: var(--text-faint);
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+        }
+
+        .info-status {
           display: flex;
           align-items: center;
-          gap: 10px;
-          flex-wrap: wrap;
-          font-size: 11px;
+          justify-content: space-between;
+          gap: 12px;
+          background: var(--panel-raised);
+          border: 1px solid var(--border-solid);
+          border-radius: 10px;
+          padding: 14px 16px;
         }
 
-        .template-label {
-          color: #666;
+        .toggle-btn {
+          font-size: 12px;
+          font-weight: 600;
+          padding: 7px 16px;
+          border-radius: 8px;
+          cursor: pointer;
+          border: none;
+          transition: filter 0.15s;
+        }
+        .toggle-start { background: var(--ok-dim); color: var(--ok); }
+        .toggle-start:hover { filter: brightness(1.2); }
+        .toggle-stop { background: var(--danger-dim); color: var(--danger); }
+        .toggle-stop:hover { filter: brightness(1.2); }
+        .toggle-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ── Commands tab ── */
+        .section-block {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+        }
+
+        .section-title {
+          font-size: 10px;
           font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.04em;
+          letter-spacing: 0.08em;
+          color: var(--text-faint);
+          margin: 0;
         }
 
-        .btn-add {
-          background: var(--bru-white);
-          border: 2px solid var(--bru-ink);
-          color: var(--bru-ink);
-          font-size: 12px;
-          font-weight: 700;
-          cursor: pointer;
-          padding: 6px 10px;
-          transition: background 0.12s ease;
-        }
-
-        .btn-add:hover {
-          background: var(--bru-yellow);
-        }
-
-        .io-row {
+        .template-chips {
           display: flex;
-          align-items: center;
-          gap: 8px;
           flex-wrap: wrap;
-        }
-
-        .io-btn {
-          display: inline-flex;
-          align-items: center;
           gap: 6px;
-          background: var(--bru-white);
-          border: 2px solid var(--bru-ink);
-          color: var(--bru-ink);
-          padding: 8px 14px;
-          font-size: 12px;
-          font-weight: 800;
-          cursor: pointer;
-          transition: background 0.15s ease, transform 0.1s ease;
         }
 
-        .io-btn:hover:not(:disabled) {
-          background: var(--bru-blue);
-          color: var(--bru-white);
-        }
-
-        .io-btn:disabled {
-          opacity: 0.4;
-          cursor: default;
-        }
-
-        .io-icon {
-          font-size: 13px;
-        }
-
-        .io-count {
-          margin-left: auto;
+        .chip {
+          background: var(--panel-raised);
+          border: 1px solid var(--border-solid);
+          color: var(--text-dim);
           font-size: 11px;
-          font-weight: 700;
-          color: #777;
+          font-weight: 600;
+          padding: 5px 10px;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: background 0.15s, color 0.15s, border-color 0.15s;
         }
+        .chip:hover { background: var(--signal-dim); color: var(--signal-2); border-color: var(--signal-dim); }
 
         .cmd-toolbar {
           display: flex;
-          flex-direction: column;
-          gap: 10px;
+          align-items: center;
+          gap: 8px;
+          flex-wrap: wrap;
         }
 
-        .search-box {
+        .search-wrap {
           display: flex;
           align-items: center;
           gap: 8px;
-          background: var(--bru-bg);
-          border: var(--bru-border);
+          flex: 1;
+          min-width: 160px;
+          background: var(--bg);
+          border: 1px solid var(--border-solid);
+          border-radius: 8px;
           padding: 0 12px;
         }
-
-        .search-icon {
-          color: #777;
-          font-size: 13px;
-        }
-
-        .search-box input {
-          border: none;
+        .search-icon { color: var(--text-faint); flex-shrink: 0; }
+        .search-input {
+          flex: 1;
           background: none;
-          padding: 10px 0;
-          box-shadow: none !important;
+          border: none;
+          outline: none;
+          color: var(--text);
+          font-size: 12px;
+          padding: 9px 0;
+          font-family: var(--sans);
+        }
+        .search-input::placeholder { color: var(--text-faint); }
+
+        .toolbar-right {
+          display: flex;
+          gap: 6px;
+          align-items: center;
+          flex-wrap: wrap;
         }
 
-        .add-command-row {
+        .tool-btn {
+          font-size: 11px;
+          font-weight: 600;
+          padding: 7px 10px;
+          border-radius: 6px;
+          background: var(--panel-raised);
+          border: 1px solid var(--border-solid);
+          color: var(--text-dim);
+          cursor: pointer;
+          transition: background 0.15s, color 0.15s;
+        }
+        .tool-btn:hover { background: var(--signal-dim); color: var(--signal-2); }
+        .tool-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .tool-btn-active { background: var(--signal-dim); color: var(--signal-2); border-color: var(--signal-dim); }
+        .tool-btn-danger:hover { background: var(--danger-dim); color: var(--danger); border-color: var(--danger-dim); }
+
+        .add-row {
           display: flex;
           gap: 8px;
         }
 
         .trigger-input {
           flex: 1;
-        }
-
-        .new-cmd-btn {
-          background: var(--bru-ink);
-          color: var(--bru-bg);
-          border: var(--bru-border);
-          padding: 0 20px;
-          font-weight: 800;
+          background: var(--bg);
+          border: 1px solid var(--border-solid);
+          color: var(--text);
+          padding: 10px 14px;
+          border-radius: 8px;
+          font-family: var(--mono);
           font-size: 12px;
-          cursor: pointer;
-          white-space: nowrap;
-          box-shadow: var(--bru-shadow-sm);
-          transition: transform 0.12s ease, box-shadow 0.12s ease;
+          outline: none;
+          transition: border-color 0.15s, box-shadow 0.15s;
         }
-
-        .new-cmd-btn:disabled {
-          opacity: 0.5;
-          cursor: default;
-          box-shadow: none;
+        .trigger-input:focus {
+          border-color: var(--signal);
+          box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
         }
+        .trigger-input::placeholder { color: var(--text-faint); }
 
-        .new-cmd-btn:not(:disabled):hover {
-          transform: translate(-2px, -2px);
-          box-shadow: 5px 5px 0 var(--bru-ink);
-        }
-
-        .empty-rules {
+        .add-btn {
+          background: var(--signal-grad);
+          border: none;
+          color: #fff;
           font-size: 12px;
           font-weight: 600;
-          color: #777;
-          margin: 4px 0;
+          padding: 10px 16px;
+          border-radius: 8px;
+          cursor: pointer;
+          white-space: nowrap;
+          transition: filter 0.15s;
         }
+        .add-btn:hover:not(:disabled) { filter: brightness(1.1); }
+        .add-btn:disabled { opacity: 0.4; cursor: not-allowed; }
 
-        .command-list {
-          display: grid;
-          grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-          gap: 12px;
+        .bulk-bar {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+          background: var(--panel-raised);
+          border: 1px solid var(--border-solid);
+          border-radius: 8px;
+          padding: 10px 14px;
+          flex-wrap: wrap;
         }
-
-        .command-item {
-          position: relative;
-          background: var(--bru-white);
-          border: var(--bru-border);
-          box-shadow: var(--bru-shadow-sm);
-          padding: 14px;
-          transition: transform 0.12s ease, box-shadow 0.12s ease;
+        .bulk-info { font-size: 12px; font-weight: 600; color: var(--text-dim); }
+        .bulk-link {
+          font-size: 11px;
+          font-weight: 600;
+          color: var(--signal-2);
+          background: none;
+          border: none;
+          cursor: pointer;
+          padding: 0;
         }
-
-        .command-item:hover {
-          transform: translate(-2px, -2px);
-          box-shadow: 6px 6px 0 var(--bru-ink);
+        .bulk-link:disabled { opacity: 0.4; }
+        .bulk-delete {
+          margin-left: auto;
+          font-size: 11px;
+          font-weight: 600;
+          padding: 5px 12px;
+          border-radius: 6px;
+          background: var(--danger-dim);
+          border: 1px solid rgba(239,68,68,0.3);
+          color: var(--danger);
+          cursor: pointer;
         }
+        .bulk-delete:disabled { opacity: 0.4; }
 
-        .command-trigger {
-          display: inline-block;
-          font-family: var(--mono);
-          font-weight: 800;
+        .msg-banner {
           font-size: 12px;
-          color: var(--bru-ink);
-          background: var(--bru-yellow);
-          border: 2px solid var(--bru-ink);
-          padding: 4px 10px;
-          margin-bottom: 12px;
+          font-weight: 500;
+          padding: 10px 14px;
+          border-radius: 8px;
+        }
+        .msg-banner.ok { background: var(--ok-dim); color: var(--ok); }
+        .msg-banner.error { background: var(--danger-dim); color: var(--danger); }
+
+        .empty-msg {
+          font-size: 13px;
+          color: var(--text-faint);
+          text-align: center;
+          padding: 24px 0;
+          margin: 0;
         }
 
-        .command-row {
+        /* ── Command grid ── */
+        .cmd-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+          gap: 8px;
+        }
+
+        .cmd-item {
+          background: var(--bg);
+          border: 1px solid var(--border-solid);
+          border-radius: 8px;
+          padding: 12px 14px;
+          display: flex;
+          flex-direction: column;
+          gap: 10px;
+          transition: border-color 0.15s;
+        }
+        .cmd-item:hover { border-color: rgba(124, 58, 237, 0.3); }
+        .cmd-item.selectable { cursor: pointer; }
+        .cmd-item.selected {
+          border-color: var(--signal);
+          background: var(--signal-dim);
+        }
+
+        .cmd-check { margin: 0; accent-color: var(--signal); }
+
+        .cmd-trigger {
+          font-family: var(--mono);
+          font-size: 12px;
+          font-weight: 700;
+          color: var(--signal-2);
+          background: var(--signal-dim);
+          padding: 3px 8px;
+          border-radius: 4px;
+          display: inline-block;
+          word-break: break-all;
+        }
+
+        .cmd-btns {
           display: flex;
           gap: 6px;
-          align-items: center;
         }
 
-        .btn-edit-code {
+        .cmd-edit {
           flex: 1;
-          background: var(--bru-ink);
-          border: 2px solid var(--bru-ink);
-          color: var(--bru-bg);
-          padding: 9px 12px;
-          font-size: 12px;
-          font-weight: 800;
+          font-size: 11px;
+          font-weight: 600;
           font-family: var(--mono);
+          background: var(--panel-raised);
+          border: 1px solid var(--border-solid);
+          color: var(--text-dim);
+          padding: 6px 10px;
+          border-radius: 6px;
           cursor: pointer;
           text-align: left;
+          transition: background 0.15s, color 0.15s;
+        }
+        .cmd-edit:hover:not(:disabled) { background: var(--signal-dim); color: var(--signal-2); }
+        .cmd-edit:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .cmd-del {
+          width: 30px;
+          height: 30px;
+          border-radius: 6px;
+          background: var(--panel-raised);
+          border: 1px solid var(--border-solid);
+          cursor: pointer;
+          font-size: 12px;
           display: flex;
           align-items: center;
-          gap: 6px;
-          transition: background 0.12s ease, color 0.12s ease;
+          justify-content: center;
+          transition: background 0.15s;
+        }
+        .cmd-del:hover:not(:disabled) { background: var(--danger-dim); }
+        .cmd-del:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .fallback-ta {
+          width: 100%;
+          background: var(--bg);
+          border: 1px solid var(--border-solid);
+          color: var(--text);
+          padding: 10px 14px;
+          border-radius: 8px;
+          font-family: var(--sans);
+          font-size: 13px;
+          outline: none;
+          resize: vertical;
+          transition: border-color 0.15s;
+        }
+        .fallback-ta:focus { border-color: var(--signal); }
+        .fallback-ta::placeholder { color: var(--text-faint); }
+        .saving-hint { font-size: 11px; color: var(--text-faint); }
+
+        /* ── Settings tab ── */
+        .settings-rows {
+          display: flex;
+          flex-direction: column;
+          border: 1px solid var(--border-solid);
+          border-radius: 10px;
+          overflow: hidden;
         }
 
-        .btn-edit-code-icon {
-          color: var(--bru-green);
+        .settings-row {
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          padding: 13px 16px;
+          background: var(--panel-raised);
+          border-bottom: 1px solid var(--border-solid);
         }
+        .settings-row:last-child { border-bottom: none; }
 
-        .btn-edit-code:hover {
-          background: var(--bru-blue);
-          border-color: var(--bru-ink);
-        }
-
-        .btn-icon {
-          background: var(--bru-white);
-          border: 2px solid var(--bru-ink);
-          color: var(--bru-ink);
-          width: 36px;
-          height: 36px;
+        .settings-key {
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          color: var(--text-faint);
+          min-width: 100px;
           flex-shrink: 0;
-          cursor: pointer;
+        }
+
+        .settings-val {
+          flex: 1;
+          font-size: 12px;
+          color: var(--text);
+          word-break: break-all;
+        }
+        .settings-val.mono { font-family: var(--mono); }
+
+        .eye-btn {
+          background: none;
+          border: none;
           font-size: 14px;
-          transition: background 0.15s ease, color 0.15s ease;
+          cursor: pointer;
+          flex-shrink: 0;
+          padding: 4px;
         }
 
-        .btn-icon-danger:hover {
-          background: var(--bru-pink);
-          color: var(--bru-white);
+        .danger-section {
+          background: rgba(239, 68, 68, 0.04);
+          border: 1px solid rgba(239, 68, 68, 0.25);
+          border-radius: 10px;
+          padding: 16px;
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
         }
 
-        /* --- Editor JS: modal overlay, bukan lagi inline --- */
-        .editor-overlay {
+        .danger-title {
+          font-size: 11px;
+          font-weight: 700;
+          text-transform: uppercase;
+          letter-spacing: 0.06em;
+          color: var(--danger);
+          margin: 0;
+        }
+
+        .danger-desc {
+          font-size: 12px;
+          color: var(--text-faint);
+          line-height: 1.6;
+          margin: 0;
+        }
+
+        .delete-btn {
+          background: var(--danger-dim);
+          border: 1px solid rgba(239, 68, 68, 0.4);
+          color: var(--danger);
+          font-size: 12px;
+          font-weight: 600;
+          padding: 10px 18px;
+          border-radius: 8px;
+          cursor: pointer;
+          align-self: flex-start;
+          transition: filter 0.15s;
+        }
+        .delete-btn:hover:not(:disabled) { filter: brightness(1.2); }
+        .delete-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        /* ── JS Editor Modal ── */
+        .overlay {
           position: fixed;
           inset: 0;
-          background: rgba(10, 10, 10, 0.6);
-          backdrop-filter: blur(2px);
+          background: rgba(0,0,0,0.65);
+          backdrop-filter: blur(3px);
           display: flex;
           align-items: center;
           justify-content: center;
           padding: 24px;
           z-index: 1000;
+          animation: fadeIn 0.15s ease;
         }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        .editor-modal {
+        .modal {
           width: 100%;
-          max-width: 720px;
+          max-width: 740px;
           max-height: 88vh;
           display: flex;
           flex-direction: column;
-          background: var(--bru-white);
-          border: var(--bru-border);
-          box-shadow: 12px 12px 0 var(--bru-ink);
+          background: var(--panel);
+          border: 1px solid var(--border-solid);
+          border-radius: 16px;
+          box-shadow: 0 32px 80px rgba(0,0,0,0.5);
+          overflow: hidden;
+          animation: modalIn 0.15s ease;
+        }
+        @keyframes modalIn {
+          from { opacity: 0; transform: scale(0.97) translateY(8px); }
+          to { opacity: 1; transform: scale(1) translateY(0); }
         }
 
-        .editor-modal-head {
+        .modal-head {
           display: flex;
           align-items: center;
           justify-content: space-between;
           gap: 12px;
-          padding: 16px 18px;
-          border-bottom: var(--bru-border);
-          background: var(--bru-yellow);
+          padding: 18px 20px;
+          border-bottom: 1px solid var(--border-solid);
+          background: var(--panel-raised);
         }
 
-        .editor-modal-title {
+        .modal-title {
           display: flex;
           align-items: center;
           gap: 12px;
           min-width: 0;
         }
 
-        .editor-modal-icon {
+        .modal-icon {
           font-family: var(--mono);
+          font-size: 15px;
           font-weight: 800;
-          font-size: 20px;
-          background: var(--bru-ink);
-          color: var(--bru-yellow);
-          width: 38px;
-          height: 38px;
+          background: var(--signal-dim);
+          color: var(--signal-2);
+          width: 36px;
+          height: 36px;
           display: flex;
           align-items: center;
           justify-content: center;
+          border-radius: 8px;
           flex-shrink: 0;
-          border: 2px solid var(--bru-ink);
         }
 
-        .editor-modal-trigger {
+        .modal-trigger {
           font-family: var(--mono);
-          font-weight: 800;
-          font-size: 15px;
+          font-size: 14px;
+          font-weight: 700;
           margin: 0;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
         }
 
-        .editor-modal-sub {
+        .modal-sub {
           font-size: 11px;
-          font-weight: 700;
-          text-transform: uppercase;
-          letter-spacing: 0.05em;
+          color: var(--text-faint);
           margin: 2px 0 0;
-          color: #444;
         }
 
-        .editor-close {
-          flex-shrink: 0;
-          width: 34px;
-          height: 34px;
-          border: 2px solid var(--bru-ink);
-          background: var(--bru-white);
-          font-weight: 800;
-          font-size: 14px;
+        .modal-close {
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          border: 1px solid var(--border-solid);
+          background: var(--panel);
+          color: var(--text-dim);
+          font-size: 12px;
           cursor: pointer;
-          transition: background 0.12s ease, color 0.12s ease;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          flex-shrink: 0;
+          transition: background 0.15s, color 0.15s;
         }
+        .modal-close:hover { background: var(--danger-dim); color: var(--danger); }
 
-        .editor-close:hover {
-          background: var(--bru-pink);
-          color: var(--bru-white);
-        }
-
-        .editor-modal-body {
-          padding: 18px;
+        .modal-body {
+          padding: 20px;
           overflow-y: auto;
           display: flex;
           flex-direction: column;
           gap: 12px;
-        }
-
-        .editor-modal-foot {
-          display: flex;
-          justify-content: flex-end;
-          gap: 10px;
-          padding: 14px 18px;
-          border-top: var(--bru-border);
-          background: var(--bru-bg);
-        }
-
-        .btn-cancel {
-          background: var(--bru-white);
-          border: 2px solid var(--bru-ink);
-          color: var(--bru-ink);
-          padding: 10px 18px;
-          font-weight: 800;
-          font-size: 12px;
-          text-transform: uppercase;
-          cursor: pointer;
-          transition: background 0.12s ease;
-        }
-
-        .btn-cancel:hover {
-          background: var(--bru-bg);
+          flex: 1;
         }
 
         .code-editor {
           width: 100%;
           font-family: var(--mono);
           font-size: 12.5px;
-          line-height: 1.7;
-          background: var(--bru-ink);
-          border: var(--bru-border);
-          color: #d8ffd8;
-          padding: 14px 16px;
-          min-height: 280px;
+          line-height: 1.75;
+          background: #0d0d12;
+          border: 1px solid var(--border-solid);
+          border-radius: 10px;
+          color: #b8ffb8;
+          padding: 16px 18px;
+          min-height: 300px;
           white-space: pre;
           outline: none;
           resize: vertical;
+          transition: border-color 0.15s, box-shadow 0.15s;
         }
-
         .code-editor:focus {
-          box-shadow: 4px 4px 0 var(--bru-blue);
+          border-color: var(--signal);
+          box-shadow: 0 0 0 3px rgba(124, 58, 237, 0.15);
         }
 
-        .code-hint {
-          font-size: 11px;
-          color: #555;
-          line-height: 1.7;
-          margin: 0;
-          background: var(--bru-bg);
-          border: 2px solid var(--bru-ink);
-          padding: 10px 12px;
-        }
-
-        .code-hint code {
-          background: var(--bru-yellow);
-          border: 1px solid var(--bru-ink);
-          padding: 1px 5px;
-          font-weight: 700;
-          color: var(--bru-ink);
-        }
-
-        .code-error {
-          background: var(--bru-pink);
-          color: var(--bru-white);
-          border: var(--bru-border);
-          font-size: 12px;
-          font-weight: 700;
-          padding: 10px 12px;
-          margin: 0;
-        }
-
-        .code-ok {
-          background: var(--bru-green);
-          color: var(--bru-ink);
-          border: var(--bru-border);
-          font-size: 12px;
-          font-weight: 700;
-          padding: 10px 12px;
-          margin: 0;
-        }
-
-        .btn-save {
-          background: var(--bru-ink);
-          color: var(--bru-bg);
-          border: var(--bru-border);
-          padding: 11px 22px;
-          font-weight: 800;
-          font-size: 12px;
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
-          cursor: pointer;
-          box-shadow: var(--bru-shadow-sm);
-          transition: transform 0.12s ease, box-shadow 0.12s ease;
-        }
-
-        .btn-save:hover:not(:disabled) {
-          transform: translate(-2px, -2px);
-          box-shadow: 6px 6px 0 var(--bru-ink);
-          background: var(--bru-green);
-          color: var(--bru-ink);
-        }
-
-        .btn-save:disabled {
-          opacity: 0.5;
-          cursor: default;
-          box-shadow: none;
-        }
-
-        .editor-field label {
-          display: block;
-          font-size: 11px;
-          font-weight: 800;
-          color: #555;
-          text-transform: uppercase;
-          letter-spacing: 0.04em;
-          margin-bottom: 6px;
-        }
-
-        .editor-field textarea {
-          width: 100%;
-          background: var(--bru-bg);
-          border: var(--bru-border);
-          color: var(--bru-ink);
-          padding: 10px 12px;
-          font-size: 13px;
-          font-family: var(--sans);
-          outline: none;
-          resize: vertical;
-        }
-
-        .editor-field textarea:focus {
-          box-shadow: 4px 4px 0 var(--bru-blue);
-        }
-
-        .saving-hint {
-          font-size: 11px;
-          font-weight: 700;
-          color: #777;
-        }
-
-        .settings-card {
-          background: var(--bru-bg);
-          border: var(--bru-border);
-          padding: 16px 18px;
-        }
-
-        .settings-label {
-          font-size: 11px;
-          font-weight: 800;
-          text-transform: uppercase;
-          letter-spacing: 0.06em;
-          color: #555;
-          margin: 0 0 8px;
-        }
-
-        .settings-row {
+        .modal-foot {
           display: flex;
-          align-items: center;
-          justify-content: space-between;
+          justify-content: flex-end;
           gap: 10px;
+          padding: 16px 20px;
+          border-top: 1px solid var(--border-solid);
+          background: var(--panel-raised);
         }
 
-        .settings-value {
-          font-size: 13px;
-          font-weight: 600;
-          color: var(--bru-ink);
-          word-break: break-all;
-        }
-
-        .settings-value.mono {
-          font-family: var(--mono);
-          font-size: 12px;
-        }
-
-        .eye-btn {
-          background: var(--bru-white);
-          border: 2px solid var(--bru-ink);
-          width: 34px;
-          height: 34px;
-          flex-shrink: 0;
-          cursor: pointer;
-        }
-
-        .danger-zone {
-          border-color: var(--bru-ink);
-          background: #fff0f0;
-        }
-
-        .danger-label {
-          color: #b3003b;
-        }
-
-        .danger-desc {
+        .modal-cancel {
+          background: var(--panel);
+          border: 1px solid var(--border-solid);
+          color: var(--text-dim);
           font-size: 12px;
           font-weight: 600;
-          color: #444;
-          line-height: 1.7;
-          margin: 0 0 12px;
-        }
-
-        .delete-btn {
-          background: var(--bru-pink);
-          color: var(--bru-white);
-          border: var(--bru-border);
-          padding: 12px 18px;
-          font-weight: 800;
-          font-size: 12px;
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
+          padding: 9px 18px;
+          border-radius: 8px;
           cursor: pointer;
-          width: 100%;
-          box-shadow: var(--bru-shadow-sm);
-          transition: transform 0.12s ease, box-shadow 0.12s ease;
+          transition: background 0.15s;
         }
+        .modal-cancel:hover { background: var(--bg); }
 
-        .delete-btn:hover:not(:disabled) {
-          transform: translate(-2px, -2px);
-          box-shadow: 6px 6px 0 var(--bru-ink);
+        .modal-save {
+          background: var(--signal-grad);
+          border: none;
+          color: #fff;
+          font-size: 12px;
+          font-weight: 600;
+          padding: 9px 20px;
+          border-radius: 8px;
+          cursor: pointer;
+          box-shadow: 0 4px 12px -4px rgba(124,58,237,0.5);
+          transition: filter 0.15s;
         }
-
-        .delete-btn:disabled {
-          opacity: 0.5;
-          box-shadow: none;
-        }
+        .modal-save:hover:not(:disabled) { filter: brightness(1.1); }
+        .modal-save:disabled { opacity: 0.4; cursor: not-allowed; }
       `}</style>
     </div>
   );
