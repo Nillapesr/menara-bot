@@ -84,7 +84,7 @@ export default function Dashboard() {
       <aside className="sidebar">
         <div className="sidebar-brand">
           <span className="brand-dot" />
-          <span className="brand-name">Sanzu</span>
+          <span className="brand-name">Menara</span>
         </div>
 
         <nav className="sidebar-nav">
@@ -121,7 +121,7 @@ export default function Dashboard() {
         <header className="topbar">
           <div className="topbar-left">
             <h1 className="page-title">Bot Manager</h1>
-            <p className="page-sub">Panel kendali bot Telegram kamu</p>
+            <p className="page-sub">Kelola semua bot Telegram kamu di satu tempat</p>
           </div>
           <AddBotPanel onAdded={fetchBots} />
         </header>
@@ -143,14 +143,15 @@ export default function Dashboard() {
         .shell {
           display: flex;
           min-height: 100vh;
+          background: linear-gradient(135deg, #0f0f1e 0%, #1a1a2e 100%);
         }
 
         /* ── Sidebar ── */
         .sidebar {
-          width: 220px;
+          width: 260px;
           flex-shrink: 0;
-          background: var(--panel);
-          border-right: 1px solid var(--border-solid);
+          background: linear-gradient(180deg, #1a1a2e 0%, #16213e 100%);
+          border-right: 1px solid rgba(124, 58, 237, 0.1);
           display: flex;
           flex-direction: column;
           padding: 28px 20px;
@@ -158,27 +159,32 @@ export default function Dashboard() {
           top: 0;
           height: 100vh;
           overflow-y: auto;
+          box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.3);
         }
 
         .sidebar-brand {
           display: flex;
           align-items: center;
-          gap: 10px;
-          margin-bottom: 36px;
+          gap: 12px;
+          margin-bottom: 40px;
         }
 
         .brand-dot {
           width: 8px; height: 28px;
-          background: var(--signal-grad);
-          border-radius: 2px;
-          box-shadow: 0 0 12px rgba(124, 58, 237, 0.5);
+          background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+          border-radius: 4px;
+          box-shadow: 0 0 20px rgba(124, 58, 237, 0.6);
         }
 
         .brand-name {
-          font-family: var(--display);
-          font-size: 18px;
-          font-weight: 700;
-          letter-spacing: -0.02em;
+          font-family: 'Inter', sans-serif;
+          font-size: 20px;
+          font-weight: 800;
+          letter-spacing: -0.03em;
+          background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
 
         .sidebar-nav {
@@ -187,77 +193,86 @@ export default function Dashboard() {
 
         .nav-label {
           display: block;
-          font-size: 10px;
-          font-weight: 600;
+          font-size: 11px;
+          font-weight: 700;
           text-transform: uppercase;
-          letter-spacing: 0.1em;
-          color: var(--text-faint);
+          letter-spacing: 0.12em;
+          color: rgba(255, 255, 255, 0.4);
           margin-bottom: 14px;
         }
 
         .stat-row {
           display: flex;
           align-items: center;
-          background: var(--panel-raised);
-          border: 1px solid var(--border-solid);
+          background: rgba(255, 255, 255, 0.03);
+          border: 1px solid rgba(124, 58, 237, 0.15);
           border-radius: 12px;
-          padding: 14px 16px;
+          padding: 16px;
           gap: 16px;
+          backdrop-filter: blur(10px);
         }
 
         .stat-item {
           display: flex;
           flex-direction: column;
-          gap: 2px;
+          gap: 3px;
         }
 
         .stat-n {
-          font-family: var(--mono);
-          font-size: 22px;
-          font-weight: 700;
+          font-family: 'Courier New', monospace;
+          font-size: 24px;
+          font-weight: 800;
           line-height: 1;
+          color: #fff;
         }
 
         .stat-n.active {
-          color: var(--ok);
+          background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
 
         .stat-l {
           font-size: 10px;
-          color: var(--text-faint);
+          color: rgba(255, 255, 255, 0.5);
           text-transform: uppercase;
-          letter-spacing: 0.06em;
+          letter-spacing: 0.08em;
+          font-weight: 600;
         }
 
         .stat-divider {
           width: 1px;
-          height: 28px;
-          background: var(--border-solid);
+          height: 32px;
+          background: rgba(124, 58, 237, 0.2);
         }
 
         .sidebar-foot {
           display: flex;
           flex-direction: column;
           gap: 12px;
+          padding-top: 20px;
+          border-top: 1px solid rgba(124, 58, 237, 0.1);
         }
 
         .user-chip {
           display: flex;
           align-items: center;
-          gap: 8px;
-          background: var(--panel-raised);
-          border: 1px solid var(--border-solid);
-          border-radius: 10px;
-          padding: 10px 12px;
+          gap: 10px;
+          background: rgba(255, 255, 255, 0.04);
+          border: 1px solid rgba(124, 58, 237, 0.15);
+          border-radius: 12px;
+          padding: 11px 14px;
           overflow: hidden;
+          backdrop-filter: blur(10px);
         }
 
         .user-avatar {
-          width: 26px; height: 26px;
-          border-radius: 50%;
-          background: var(--signal-dim);
-          color: var(--signal-2);
-          font-size: 11px;
+          width: 28px; height: 28px;
+          border-radius: 8px;
+          background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+          color: #fff;
+          font-size: 12px;
           font-weight: 700;
           display: flex;
           align-items: center;
@@ -267,11 +282,12 @@ export default function Dashboard() {
 
         .user-email {
           font-size: 11px;
-          color: var(--text-dim);
-          font-family: var(--mono);
+          color: rgba(255, 255, 255, 0.6);
+          font-family: 'Courier New', monospace;
           white-space: nowrap;
           overflow: hidden;
           text-overflow: ellipsis;
+          flex: 1;
         }
 
         .foot-links {
@@ -283,79 +299,93 @@ export default function Dashboard() {
           flex: 1;
           text-align: center;
           font-size: 11px;
-          font-weight: 600;
-          padding: 7px;
+          font-weight: 700;
+          padding: 9px;
           border-radius: 8px;
           text-decoration: none;
           cursor: pointer;
           border: none;
-          transition: background 0.15s;
+          transition: all 0.2s ease;
         }
 
         .foot-link.admin {
-          background: var(--signal-dim);
-          color: var(--signal-2);
+          background: rgba(124, 58, 237, 0.15);
+          color: #a78bfa;
+          border: 1px solid rgba(124, 58, 237, 0.25);
         }
 
         .foot-link.admin:hover {
-          background: #2e1a5a;
+          background: rgba(124, 58, 237, 0.25);
+          border-color: rgba(124, 58, 237, 0.4);
         }
 
         .foot-link.logout {
-          background: var(--panel-raised);
-          color: var(--text-dim);
-          border: 1px solid var(--border-solid);
+          background: rgba(255, 255, 255, 0.04);
+          color: rgba(255, 255, 255, 0.6);
+          border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
         .foot-link.logout:hover {
-          color: var(--danger);
-          border-color: var(--danger);
+          color: #ff6b6b;
+          border-color: rgba(255, 107, 107, 0.3);
+          background: rgba(255, 107, 107, 0.05);
         }
 
         /* ── Main ── */
         .main {
           flex: 1;
           min-width: 0;
-          padding: 36px 40px 80px;
+          padding: 40px 50px 80px;
+          overflow-y: auto;
         }
 
         .topbar {
           display: flex;
           align-items: flex-start;
           justify-content: space-between;
-          gap: 24px;
-          margin-bottom: 40px;
+          gap: 30px;
+          margin-bottom: 50px;
           flex-wrap: wrap;
         }
 
+        .topbar-left {
+          flex: 1;
+        }
+
         .page-title {
-          font-family: var(--display);
-          font-size: 24px;
-          font-weight: 700;
+          font-family: 'Inter', sans-serif;
+          font-size: 32px;
+          font-weight: 800;
           margin: 0;
           letter-spacing: -0.02em;
+          background: linear-gradient(135deg, #fff 0%, #e0e7ff 100%);
+          -webkit-background-clip: text;
+          -webkit-text-fill-color: transparent;
+          background-clip: text;
         }
 
         .page-sub {
-          margin: 4px 0 0;
-          color: var(--text-dim);
-          font-size: 13px;
+          margin: 8px 0 0;
+          color: rgba(255, 255, 255, 0.5);
+          font-size: 14px;
+          font-weight: 500;
         }
 
         .error-banner {
-          background: var(--danger-dim);
-          border: 1px solid var(--danger);
-          color: var(--text);
-          padding: 14px 18px;
-          border-radius: 10px;
-          font-size: 13px;
-          margin-bottom: 24px;
+          background: rgba(239, 68, 68, 0.1);
+          border: 1px solid rgba(239, 68, 68, 0.3);
+          color: #fca5a5;
+          padding: 16px 20px;
+          border-radius: 12px;
+          font-size: 14px;
+          margin-bottom: 28px;
+          backdrop-filter: blur(10px);
         }
 
         .bot-list {
           display: flex;
           flex-direction: column;
-          gap: 10px;
+          gap: 12px;
         }
 
         @media (max-width: 768px) {
@@ -364,17 +394,27 @@ export default function Dashboard() {
             width: 100%;
             height: auto;
             position: static;
-            padding: 20px;
+            padding: 16px;
             flex-direction: row;
             align-items: center;
             justify-content: space-between;
             flex-wrap: wrap;
-            gap: 12px;
+            gap: 16px;
           }
           .sidebar-brand { margin-bottom: 0; }
           .sidebar-nav { flex: none; }
-          .sidebar-foot { flex-direction: row; align-items: center; }
-          .main { padding: 24px 20px 60px; }
+          .sidebar-foot { 
+            flex-direction: row; 
+            align-items: center;
+            border-top: none;
+            padding-top: 0;
+            border-left: 1px solid rgba(124, 58, 237, 0.1);
+            padding-left: 16px;
+          }
+          .main { 
+            padding: 28px 20px 60px;
+          }
+          .page-title { font-size: 24px; }
         }
       `}</style>
     </div>
